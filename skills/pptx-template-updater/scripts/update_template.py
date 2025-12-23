@@ -51,6 +51,9 @@ def update_table_cell(table, row, col, new_text):
         original_font_size = None
         original_font_name = None
         original_font_bold = None
+        original_font_italic = None
+        original_font_underline = None
+        original_font_color = None
 
         if text_frame.paragraphs:
             first_para = text_frame.paragraphs[0]
@@ -61,6 +64,11 @@ def update_table_cell(table, row, col, new_text):
                 original_font_size = first_run.font.size
                 original_font_name = first_run.font.name
                 original_font_bold = first_run.font.bold
+                original_font_italic = first_run.font.italic
+                original_font_underline = first_run.font.underline
+                # Store color if available
+                if first_run.font.color.type is not None:
+                    original_font_color = first_run.font.color.rgb
 
             # Fallback to paragraph's font properties if no runs exist
             if original_font_size is None:
@@ -69,6 +77,10 @@ def update_table_cell(table, row, col, new_text):
                 original_font_name = first_para.font.name
             if original_font_bold is None:
                 original_font_bold = first_para.font.bold
+            if original_font_italic is None:
+                original_font_italic = first_para.font.italic
+            if original_font_underline is None:
+                original_font_underline = first_para.font.underline
 
         # Clear and update cell
         text_frame.clear()
@@ -83,6 +95,12 @@ def update_table_cell(table, row, col, new_text):
             run.font.name = original_font_name
         if original_font_bold is not None:
             run.font.bold = original_font_bold
+        if original_font_italic is not None:
+            run.font.italic = original_font_italic
+        if original_font_underline is not None:
+            run.font.underline = original_font_underline
+        if original_font_color is not None:
+            run.font.color.rgb = original_font_color
 
         return {"success": True, "cell": f"({row},{col})"}
 
@@ -122,6 +140,8 @@ def update_shape_text(shape, new_text, preserve_bullets=True, warn_on_overflow=T
     original_font_size = None
     original_font_name = None
     original_font_bold = None
+    original_font_italic = None
+    original_font_underline = None
     original_font_color = None
 
     if text_frame.paragraphs:
@@ -133,9 +153,11 @@ def update_shape_text(shape, new_text, preserve_bullets=True, warn_on_overflow=T
             original_font_size = first_run.font.size
             original_font_name = first_run.font.name
             original_font_bold = first_run.font.bold
+            original_font_italic = first_run.font.italic
+            original_font_underline = first_run.font.underline
             # Store color if available
             if first_run.font.color.type is not None:
-                original_font_color = first_run.font.color
+                original_font_color = first_run.font.color.rgb
 
         # Fallback to paragraph's font properties if no runs exist
         if original_font_size is None:
@@ -144,6 +166,10 @@ def update_shape_text(shape, new_text, preserve_bullets=True, warn_on_overflow=T
             original_font_name = first_para.font.name
         if original_font_bold is None:
             original_font_bold = first_para.font.bold
+        if original_font_italic is None:
+            original_font_italic = first_para.font.italic
+        if original_font_underline is None:
+            original_font_underline = first_para.font.underline
 
     if preserve_bullets and '\n' in new_text:
         # Preserve bullet structure
@@ -167,6 +193,12 @@ def update_shape_text(shape, new_text, preserve_bullets=True, warn_on_overflow=T
                 run.font.name = original_font_name
             if original_font_bold is not None:
                 run.font.bold = original_font_bold
+            if original_font_italic is not None:
+                run.font.italic = original_font_italic
+            if original_font_underline is not None:
+                run.font.underline = original_font_underline
+            if original_font_color is not None:
+                run.font.color.rgb = original_font_color
 
         # Add remaining paragraphs with formatting
         for line in lines[1:]:
@@ -182,6 +214,12 @@ def update_shape_text(shape, new_text, preserve_bullets=True, warn_on_overflow=T
                 run.font.name = original_font_name
             if original_font_bold is not None:
                 run.font.bold = original_font_bold
+            if original_font_italic is not None:
+                run.font.italic = original_font_italic
+            if original_font_underline is not None:
+                run.font.underline = original_font_underline
+            if original_font_color is not None:
+                run.font.color.rgb = original_font_color
 
     else:
         # Simple text replacement with formatting preservation
@@ -196,6 +234,12 @@ def update_shape_text(shape, new_text, preserve_bullets=True, warn_on_overflow=T
             run.font.name = original_font_name
         if original_font_bold is not None:
             run.font.bold = original_font_bold
+        if original_font_italic is not None:
+            run.font.italic = original_font_italic
+        if original_font_underline is not None:
+            run.font.underline = original_font_underline
+        if original_font_color is not None:
+            run.font.color.rgb = original_font_color
 
     result["new_length"] = len(new_text)
     result["original_length"] = original_length
