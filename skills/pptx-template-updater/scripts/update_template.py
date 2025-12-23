@@ -28,6 +28,16 @@ from pathlib import Path
 from pptx import Presentation
 from pptx.util import Pt
 from pptx.enum.shapes import MSO_SHAPE_TYPE
+from pptx.exc import PackageNotFoundError, PythonPptxError
+
+# Import security utilities
+from security_utils import (
+    validate_input_file,
+    validate_output_file,
+    SecurityError,
+    PathTraversalError,
+    FileSizeError
+)
 
 
 def update_table_cell(table, row, col, new_text):
@@ -111,8 +121,12 @@ def update_table_cell(table, row, col, new_text):
 
         return {"success": True, "cell": f"({row},{col})"}
 
-    except Exception as e:
-        return {"success": False, "error": str(e), "cell": f"({row},{col})"}
+    except (IndexError, KeyError) as e:
+        return {"success": False, "error": f"Invalid cell reference: {e}", "cell": f"({row},{col})"}
+    except (AttributeError, ValueError) as e:
+        return {"success": False, "error": f"Cell formatting error: {e}", "cell": f"({row},{col})"}
+    except PythonPptxError as e:
+        return {"success": False, "error": f"PowerPoint error: {e}", "cell": f"({row},{col})"}
 
 
 def update_shape_text(shape, new_text, preserve_bullets=True, warn_on_overflow=True):
@@ -363,26 +377,57 @@ def main():
 
     args = parser.parse_args()
 
-    # Validate inputs
-    if not Path(args.template).exists():
-        print(f"Error: Template file not found: {args.template}", file=sys.stderr)
-        sys.exit(1)
-
-    if not Path(args.updates).exists():
-        print(f"Error: Updates file not found: {args.updates}", file=sys.stderr)
-        sys.exit(1)
-
-    # Load updates
+    # Validate inputs with security checks
     try:
-        with open(args.updates, 'r') as f:
+        # Validate template file (PPTX)
+        template_path = validate_input_file(
+            args.template,
+            allowed_extensions=['.pptx']
+        )
+
+        # Validate updates file (JSON)
+        updates_path = validate_input_file(
+            args.updates,
+            allowed_extensions=['.json'],
+            max_size_bytes=10 * 1024 * 1024  # 10MB limit for JSON files
+        )
+
+        # Validate output file path
+        output_path = validate_output_file(
+            args.output,
+            allowed_extensions=['.pptx']
+        )
+
+    except PathTraversalError as e:
+        print(f"Security Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except FileSizeError as e:
+        print(f"File Size Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except FileNotFoundError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except ValueError as e:
+        print(f"Invalid file type: {e}", file=sys.stderr)
+        sys.exit(1)
+    except SecurityError as e:
+        print(f"Security Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # Load updates JSON
+    try:
+        with open(updates_path, 'r', encoding='utf-8') as f:
             updates_data = json.load(f)
     except json.JSONDecodeError as e:
         print(f"Error: Invalid JSON in updates file: {e}", file=sys.stderr)
         sys.exit(1)
+    except UnicodeDecodeError as e:
+        print(f"Error: File encoding error: {e}", file=sys.stderr)
+        sys.exit(1)
 
     # Apply updates
     try:
-        results = apply_updates(args.template, updates_data, args.output)
+        results = apply_updates(template_path, updates_data, output_path)
 
         # Print results
         print(f"\n✅ Updates applied: {results['updates_applied']}")
@@ -398,8 +443,20 @@ def main():
             for error in results["errors"]:
                 print(f"  - {error}")
 
-    except Exception as e:
-        print(f"Error updating template: {e}", file=sys.stderr)
+    except PackageNotFoundError as e:
+        print(f"Error: Invalid or corrupted PowerPoint file: {e}", file=sys.stderr)
+        sys.exit(1)
+    except PermissionError as e:
+        print(f"Error: Permission denied: {e}", file=sys.stderr)
+        sys.exit(1)
+    except OSError as e:
+        print(f"Error: File system error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except PythonPptxError as e:
+        print(f"Error processing PowerPoint file: {e}", file=sys.stderr)
+        sys.exit(1)
+    except KeyError as e:
+        print(f"Error: Invalid updates data structure: {e}", file=sys.stderr)
         sys.exit(1)
 
 

@@ -16,6 +16,16 @@ import argparse
 from pathlib import Path
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
+from pptx.exc import PackageNotFoundError, PythonPptxError
+
+# Import security utilities
+from security_utils import (
+    validate_input_file,
+    validate_output_file,
+    SecurityError,
+    PathTraversalError,
+    FileSizeError
+)
 
 
 def get_shape_type_name(shape_type):
@@ -148,8 +158,11 @@ def extract_template_structure(pptx_path):
                 # Include shapes with text OR tables with content
                 if shape_data["text_content"] or (shape_data.get("is_table") and shape_data.get("table", {}).get("cells")):
                     slide_data["shapes"].append(shape_data)
-            except Exception as e:
+            except (AttributeError, KeyError, IndexError) as e:
                 print(f"Warning: Could not analyze shape {shape_index} on slide {slide_index}: {e}",
+                      file=sys.stderr)
+            except PythonPptxError as e:
+                print(f"Warning: PowerPoint error analyzing shape {shape_index} on slide {slide_index}: {e}",
                       file=sys.stderr)
 
         structure["slides"].append(slide_data)
@@ -170,22 +183,63 @@ def main():
 
     args = parser.parse_args()
 
-    if not Path(args.template).exists():
-        print(f"Error: File not found: {args.template}", file=sys.stderr)
+    # Validate inputs with security checks
+    try:
+        # Validate template file (PPTX)
+        template_path = validate_input_file(
+            args.template,
+            allowed_extensions=['.pptx']
+        )
+
+        # Validate output file path if specified
+        output_path = None
+        if args.output:
+            output_path = validate_output_file(
+                args.output,
+                allowed_extensions=['.json']
+            )
+
+    except PathTraversalError as e:
+        print(f"Security Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except FileSizeError as e:
+        print(f"File Size Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except FileNotFoundError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except ValueError as e:
+        print(f"Invalid file type: {e}", file=sys.stderr)
+        sys.exit(1)
+    except SecurityError as e:
+        print(f"Security Error: {e}", file=sys.stderr)
         sys.exit(1)
 
+    # Extract template structure
     try:
-        structure = extract_template_structure(args.template)
+        structure = extract_template_structure(template_path)
         output_json = json.dumps(structure, indent=2)
 
-        if args.output:
-            Path(args.output).write_text(output_json)
-            print(f"Structure extracted to: {args.output}", file=sys.stderr)
+        if output_path:
+            output_path.write_text(output_json, encoding='utf-8')
+            print(f"Structure extracted to: {output_path}", file=sys.stderr)
         else:
             print(output_json)
 
-    except Exception as e:
-        print(f"Error extracting template structure: {e}", file=sys.stderr)
+    except PackageNotFoundError as e:
+        print(f"Error: Invalid or corrupted PowerPoint file: {e}", file=sys.stderr)
+        sys.exit(1)
+    except PermissionError as e:
+        print(f"Error: Permission denied: {e}", file=sys.stderr)
+        sys.exit(1)
+    except OSError as e:
+        print(f"Error: File system error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except PythonPptxError as e:
+        print(f"Error processing PowerPoint file: {e}", file=sys.stderr)
+        sys.exit(1)
+    except UnicodeEncodeError as e:
+        print(f"Error: Character encoding error in output: {e}", file=sys.stderr)
         sys.exit(1)
 
 
