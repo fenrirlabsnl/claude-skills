@@ -100,7 +100,14 @@ def update_table_cell(table, row, col, new_text):
         if original_font_underline is not None:
             run.font.underline = original_font_underline
         if original_font_color is not None:
-            run.font.color.rgb = original_font_color
+            # Copy color (handles RGB and theme colors)
+            try:
+                if hasattr(original_font_color, 'rgb') and original_font_color.rgb:
+                    run.font.color.rgb = original_font_color.rgb
+                elif hasattr(original_font_color, 'theme_color'):
+                    run.font.color.theme_color = original_font_color.theme_color
+            except:
+                pass  # Skip if color can't be applied
 
         return {"success": True, "cell": f"({row},{col})"}
 
