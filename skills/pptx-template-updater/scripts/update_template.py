@@ -131,7 +131,8 @@ def update_shape_text(shape, new_text, preserve_bullets=True, warn_on_overflow=T
 
         # Clear existing paragraphs but keep the first one
         while len(text_frame.paragraphs) > 1:
-            text_frame.paragraphs._element.remove(text_frame.paragraphs[-1]._element)
+            p = text_frame.paragraphs[-1]
+            p._element.getparent().remove(p._element)
 
         # Update first paragraph with formatting preservation
         if lines:
