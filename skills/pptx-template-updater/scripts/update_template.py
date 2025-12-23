@@ -52,11 +52,23 @@ def update_table_cell(table, row, col, new_text):
         original_font_name = None
         original_font_bold = None
 
-        if text_frame.paragraphs and text_frame.paragraphs[0].runs:
-            first_run = text_frame.paragraphs[0].runs[0]
-            original_font_size = first_run.font.size
-            original_font_name = first_run.font.name
-            original_font_bold = first_run.font.bold
+        if text_frame.paragraphs:
+            first_para = text_frame.paragraphs[0]
+
+            # Try to get formatting from first run
+            if first_para.runs:
+                first_run = first_para.runs[0]
+                original_font_size = first_run.font.size
+                original_font_name = first_run.font.name
+                original_font_bold = first_run.font.bold
+
+            # Fallback to paragraph's font properties if no runs exist
+            if original_font_size is None:
+                original_font_size = first_para.font.size
+            if original_font_name is None:
+                original_font_name = first_para.font.name
+            if original_font_bold is None:
+                original_font_bold = first_para.font.bold
 
         # Clear and update cell
         text_frame.clear()
@@ -64,15 +76,11 @@ def update_table_cell(table, row, col, new_text):
         run = p.add_run()
         run.text = new_text
 
-        # Apply original formatting with defaults
+        # Apply original formatting
         if original_font_size:
             run.font.size = original_font_size
-        else:
-            run.font.size = Pt(12)  # Default to 12 points if no size detected
-
         if original_font_name:
             run.font.name = original_font_name
-
         if original_font_bold is not None:
             run.font.bold = original_font_bold
 
@@ -110,20 +118,32 @@ def update_shape_text(shape, new_text, preserve_bullets=True, warn_on_overflow=T
 
     text_frame = shape.text_frame
 
-    # Capture original formatting from first run
+    # Capture original formatting from first run or paragraph defaults
     original_font_size = None
     original_font_name = None
     original_font_bold = None
     original_font_color = None
 
-    if text_frame.paragraphs and text_frame.paragraphs[0].runs:
-        first_run = text_frame.paragraphs[0].runs[0]
-        original_font_size = first_run.font.size
-        original_font_name = first_run.font.name
-        original_font_bold = first_run.font.bold
-        # Store color if available
-        if first_run.font.color.type is not None:
-            original_font_color = first_run.font.color
+    if text_frame.paragraphs:
+        first_para = text_frame.paragraphs[0]
+
+        # Try to get formatting from first run
+        if first_para.runs:
+            first_run = first_para.runs[0]
+            original_font_size = first_run.font.size
+            original_font_name = first_run.font.name
+            original_font_bold = first_run.font.bold
+            # Store color if available
+            if first_run.font.color.type is not None:
+                original_font_color = first_run.font.color
+
+        # Fallback to paragraph's font properties if no runs exist
+        if original_font_size is None:
+            original_font_size = first_para.font.size
+        if original_font_name is None:
+            original_font_name = first_para.font.name
+        if original_font_bold is None:
+            original_font_bold = first_para.font.bold
 
     if preserve_bullets and '\n' in new_text:
         # Preserve bullet structure
@@ -140,11 +160,9 @@ def update_shape_text(shape, new_text, preserve_bullets=True, warn_on_overflow=T
             first_para.clear()
             run = first_para.add_run()
             run.text = lines[0]
-            # Apply original formatting with defaults
+            # Apply original formatting
             if original_font_size:
                 run.font.size = original_font_size
-            else:
-                run.font.size = Pt(12)  # Default to 12 points
             if original_font_name:
                 run.font.name = original_font_name
             if original_font_bold is not None:
@@ -157,11 +175,9 @@ def update_shape_text(shape, new_text, preserve_bullets=True, warn_on_overflow=T
             run.text = line
             # Copy level from first paragraph
             p.level = text_frame.paragraphs[0].level
-            # Apply original formatting with defaults
+            # Apply original formatting
             if original_font_size:
                 run.font.size = original_font_size
-            else:
-                run.font.size = Pt(12)  # Default to 12 points
             if original_font_name:
                 run.font.name = original_font_name
             if original_font_bold is not None:
@@ -173,11 +189,9 @@ def update_shape_text(shape, new_text, preserve_bullets=True, warn_on_overflow=T
         first_para.clear()
         run = first_para.add_run()
         run.text = new_text
-        # Apply original formatting with defaults
+        # Apply original formatting
         if original_font_size:
             run.font.size = original_font_size
-        else:
-            run.font.size = Pt(12)  # Default to 12 points
         if original_font_name:
             run.font.name = original_font_name
         if original_font_bold is not None:
