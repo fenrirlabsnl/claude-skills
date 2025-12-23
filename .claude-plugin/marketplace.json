@@ -1,0 +1,15 @@
+{
+  "name": "fenrirlabs-skills",
+  "owner": {
+    "name": "Fenrir Labs",
+    "email": "contact@fenrirlabs.com"
+  },
+  "plugins": [
+    {
+      "name": "pptx-skills",
+      "source": "./skills",
+      "description": "PowerPoint template updater with semantic analysis and intelligent content mapping",
+      "version": "1.0.0"
+    }
+  ]
+}
