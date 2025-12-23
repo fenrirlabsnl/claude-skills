@@ -66,9 +66,9 @@ def update_table_cell(table, row, col, new_text):
                 original_font_bold = first_run.font.bold
                 original_font_italic = first_run.font.italic
                 original_font_underline = first_run.font.underline
-                # Store color if available
+                # Store color object (handles RGB and theme colors)
                 if first_run.font.color.type is not None:
-                    original_font_color = first_run.font.color.rgb
+                    original_font_color = first_run.font.color
 
             # Fallback to paragraph's font properties if no runs exist
             if original_font_size is None:
@@ -155,9 +155,9 @@ def update_shape_text(shape, new_text, preserve_bullets=True, warn_on_overflow=T
             original_font_bold = first_run.font.bold
             original_font_italic = first_run.font.italic
             original_font_underline = first_run.font.underline
-            # Store color if available
+            # Store color object (handles RGB and theme colors)
             if first_run.font.color.type is not None:
-                original_font_color = first_run.font.color.rgb
+                original_font_color = first_run.font.color
 
         # Fallback to paragraph's font properties if no runs exist
         if original_font_size is None:
@@ -198,7 +198,14 @@ def update_shape_text(shape, new_text, preserve_bullets=True, warn_on_overflow=T
             if original_font_underline is not None:
                 run.font.underline = original_font_underline
             if original_font_color is not None:
-                run.font.color.rgb = original_font_color
+                # Copy color (handles RGB and theme colors)
+                try:
+                    if hasattr(original_font_color, 'rgb') and original_font_color.rgb:
+                        run.font.color.rgb = original_font_color.rgb
+                    elif hasattr(original_font_color, 'theme_color'):
+                        run.font.color.theme_color = original_font_color.theme_color
+                except:
+                    pass  # Skip if color can't be applied
 
         # Add remaining paragraphs with formatting
         for line in lines[1:]:
@@ -219,7 +226,14 @@ def update_shape_text(shape, new_text, preserve_bullets=True, warn_on_overflow=T
             if original_font_underline is not None:
                 run.font.underline = original_font_underline
             if original_font_color is not None:
-                run.font.color.rgb = original_font_color
+                # Copy color (handles RGB and theme colors)
+                try:
+                    if hasattr(original_font_color, 'rgb') and original_font_color.rgb:
+                        run.font.color.rgb = original_font_color.rgb
+                    elif hasattr(original_font_color, 'theme_color'):
+                        run.font.color.theme_color = original_font_color.theme_color
+                except:
+                    pass  # Skip if color can't be applied
 
     else:
         # Simple text replacement with formatting preservation
