@@ -1,5 +1,6 @@
 {
   "name": "pptx-template-updater",
   "version": "1.0.0",
-  "description": "PowerPoint template updater with semantic analysis and intelligent content mapping."
+  "description": "PowerPoint template updater with semantic analysis and intelligent content mapping.",
+  "skills": "./skills/"
 }
