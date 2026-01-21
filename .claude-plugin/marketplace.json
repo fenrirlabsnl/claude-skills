@@ -6,15 +6,15 @@
   },
   "plugins": [
     {
-      "name": "pptx-template-updater",
-      "source": "./skills/pptx-template-updater",
-      "description": "PowerPoint template updater with semantic analysis and intelligent content mapping",
+      "name": "ai-resume-interview",
+      "source": "./plugins/ai-resume-interview",
+      "description": "Conversational interview skill for AI Resume",
       "version": "1.0.0"
     },
     {
-      "name": "ai-resume-interview",
-      "source": "./skills/ai-resume-interview",
-      "description": "Conversational interview skill to populate AI Resume with brutally honest, nuanced career data. Optimized for voice input via Wispr. Use when user says 'interview me', 'populate my resume', or '/ai-resume-interview'.",
+      "name": "pptx-template-updater",
+      "source": "./plugins/pptx-template-updater",
+      "description": "PowerPoint template updater with semantic analysis",
       "version": "1.0.0"
     }
   ]
