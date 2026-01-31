@@ -1,5 +1,6 @@
 ---
 name: ai-resume-interview
+category: Career
 description: >
   Conversational interview skill to populate the AI Resume with brutally honest, nuanced career data.
   Optimized for voice input via Wispr. Use when user says "interview me", "populate my resume",

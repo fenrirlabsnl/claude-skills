@@ -1,5 +1,6 @@
 ---
 name: inbox-triage
+category: Productivity
 description: >
   Inbox triage bot that categorizes emails, flags urgent items, and drafts quick replies.
   Use when asked to check email, triage inbox, summarize what needs attention, or when user

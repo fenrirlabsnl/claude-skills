@@ -1,5 +1,6 @@
 ---
 name: meeting-prep
+category: Productivity
 description: >
   Meeting prep assistant that researches attendees, reviews context, and generates briefings.
   Use when asked to prepare for a meeting, research attendees, generate a meeting brief, or

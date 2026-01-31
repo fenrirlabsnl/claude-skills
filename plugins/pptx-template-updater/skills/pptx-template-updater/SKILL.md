@@ -1,5 +1,6 @@
 ---
 name: pptx-template-updater
+category: Productivity
 description: Update PowerPoint templates with new content while preserving formatting, structure, and layout. Uses semantic analysis to understand template structure and intelligently map new content (from meeting transcripts, summaries, reports) to appropriate shapes. Use when the user asks to update a PowerPoint presentation, fill in a PPTX template, update slides with new data, or refresh a presentation with new content. Handles business reports, sales decks, status updates, and other template-based presentations.
 ---
 

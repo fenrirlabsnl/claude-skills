@@ -1,5 +1,6 @@
 ---
 name: lead-qualifier
+category: Sales
 description: >
   Lead qualification bot that scores inbound leads, identifies hot prospects, and drafts
   personalized responses. Use when asked to qualify leads, review inquiries, prioritize
