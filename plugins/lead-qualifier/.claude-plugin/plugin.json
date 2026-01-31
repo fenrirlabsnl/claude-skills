@@ -1,0 +1,6 @@
+{
+  "name": "lead-qualifier",
+  "version": "1.0.0",
+  "description": "Lead qualification bot that scores inbound leads, identifies hot prospects, and drafts personalized responses.",
+  "skills": "./skills/"
+}

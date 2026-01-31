@@ -1,0 +1,6 @@
+{
+  "name": "meeting-prep",
+  "version": "1.0.0",
+  "description": "Meeting prep assistant that researches attendees, reviews context, and generates briefings.",
+  "skills": "./skills/"
+}

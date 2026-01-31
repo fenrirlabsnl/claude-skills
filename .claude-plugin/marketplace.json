@@ -16,6 +16,24 @@
       "source": "./plugins/pptx-template-updater",
       "description": "PowerPoint template updater with semantic analysis",
       "version": "1.0.0"
+    },
+    {
+      "name": "inbox-triage",
+      "source": "./plugins/inbox-triage",
+      "description": "Inbox triage bot that categorizes emails, flags urgent items, and drafts quick replies",
+      "version": "1.0.0"
+    },
+    {
+      "name": "lead-qualifier",
+      "source": "./plugins/lead-qualifier",
+      "description": "Lead qualification bot that scores inbound leads and drafts personalized responses",
+      "version": "1.0.0"
+    },
+    {
+      "name": "meeting-prep",
+      "source": "./plugins/meeting-prep",
+      "description": "Meeting prep assistant that researches attendees and generates briefings",
+      "version": "1.0.0"
     }
   ]
 }

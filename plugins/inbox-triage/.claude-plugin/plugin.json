@@ -1,0 +1,6 @@
+{
+  "name": "inbox-triage",
+  "version": "1.0.0",
+  "description": "Inbox triage bot that categorizes emails, flags urgent items, and drafts quick replies.",
+  "skills": "./skills/"
+}
