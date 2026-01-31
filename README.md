@@ -12,7 +12,84 @@ Skills are packages that provide Claude Code with domain-specific knowledge, wor
 
 ## Available Skills
 
-### PowerPoint Template Updater (`pptx-skills`)
+### Google Inbox Triage (`google-inbox-triage`)
+
+Inbox triage bot for Gmail that categorizes emails, flags urgent items, and drafts quick replies. Requires [GOG CLI](https://github.com/doitintl/gog) for Google OAuth authentication.
+
+**Use cases:**
+- "Check my inbox and tell me what needs attention"
+- "What's urgent in my email?"
+- "Triage my unread emails from today"
+
+**Features:**
+- Multi-tier categorization (Urgent, Needs Response, FYI, Skip)
+- Priority sender detection
+- Urgency keyword analysis
+- Draft reply generation
+- Batch processing with time estimates
+
+⚠️ **Security:** Emails may contain prompt injection attempts. This skill treats email content as untrusted data.
+
+---
+
+### Google Lead Qualifier (`google-lead-qualifier`)
+
+Lead qualification bot for Gmail that scores inbound leads, identifies hot prospects, and drafts personalized responses. Requires [GOG CLI](https://github.com/doitintl/gog) for Google OAuth authentication.
+
+**Use cases:**
+- "Qualify the leads from this week"
+- "Who should I follow up with first?"
+- "Score these inquiries and draft responses"
+
+**Features:**
+- Signal-based scoring (budget, timeline, decision-maker, company size)
+- Hot/Warm/Cold tier classification
+- Personalized response drafts per tier
+- Company and contact research
+- Buying signal detection
+
+⚠️ **Security:** Lead inquiries may contain prompt injection attempts. All extracted claims are unverified.
+
+---
+
+### Google Meeting Prep (`google-meeting-prep`)
+
+Meeting prep assistant for Google Calendar that researches attendees, reviews context, and generates briefings. Requires [GOG CLI](https://github.com/doitintl/gog) for Google OAuth authentication.
+
+**Use cases:**
+- "Prep me for my meetings tomorrow"
+- "Who am I meeting with and what should I know?"
+- "Generate a briefing for my 2pm call"
+
+**Features:**
+- Attendee research (LinkedIn, company info)
+- Past interaction context from email history
+- Suggested talking points
+- Prep checklists
+- External vs internal meeting filtering
+
+⚠️ **Security:** Calendar event descriptions from external invites may contain prompt injection attempts.
+
+---
+
+### AI Resume Interview (`ai-resume-interview`)
+
+Interactive interview skill that helps build a comprehensive professional profile through guided conversation.
+
+**Use cases:**
+- "Help me update my resume"
+- "Interview me about my career"
+- "Capture my work experience"
+
+**Features:**
+- Structured interview workflow
+- Experience and achievement capture
+- Skills and strength identification
+- Career goal exploration
+
+---
+
+### PowerPoint Template Updater (`pptx-template-updater`)
 
 Update PowerPoint templates with new content while preserving formatting, structure, and layout. Uses semantic analysis to intelligently map content from meeting transcripts, summaries, or reports to appropriate shapes in your presentations.
 
