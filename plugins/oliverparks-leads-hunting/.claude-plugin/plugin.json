@@ -1,0 +1,8 @@
+{
+  "name": "oliverparks-leads-hunting",
+  "version": "1.0.0",
+  "description": "Parallel job scraping from Indeed and Stepstone, LinkedIn hiring manager discovery, and intelligent lead prioritization.",
+  "author": {
+    "name": "Oliver Parks"
+  }
+}

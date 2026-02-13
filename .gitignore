@@ -1,0 +1,10 @@
+# Plugins in development (not ready for sharing)
+plugins/indeed-job-scraper/
+plugins/linkedin-hiring-manager/
+plugins/stepstone-job-scraper/
+plugins/recruiter-lead-hunter/
+
+# Misc
+DESIGNSYSTEM.md
+onboarding-email.html
+
