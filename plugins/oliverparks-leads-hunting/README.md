@@ -13,7 +13,7 @@ claude plugins add oliverparks-leads-hunting
 This plugin gives you an AI-powered recruiting assistant that can:
 
 - **Scrape Job Boards** - Parallel scanning of Indeed and Stepstone Germany with direct employer filtering
-- **Find Hiring Managers** - LinkedIn profile search with function-based targeting (not just HR gatekeepers)
+- **Find Hiring Managers** - LinkedIn profile search with function-based targeting, including HR and recruiting contacts
 - **Orchestrate Pipelines** - Full lead generation workflow from job discovery to decision-maker identification
 - **Smart Filtering** - Agency detection, technical role filtering, and intelligent deduplication
 - **Export Results** - CSV, JSON, or XLSX output for CRM import
@@ -35,6 +35,24 @@ This plugin gives you an AI-powered recruiting assistant that can:
 | `linkedin-leads` | LinkedIn people search, function mapping, confidence scoring |
 | `lead-orchestration` | Parallel execution, deduplication, batched LinkedIn, export |
 | `job-filtering` | Agency keywords, technical role detection, normalization |
+
+## Configuration
+
+### Browser Automation
+
+This plugin requires **Claude in Chrome** (or equivalent real-browser MCP server) for all web scraping. Headless browsers like Playwright are not supported — Indeed and Stepstone actively detect and block them.
+
+Ensure Claude in Chrome is running before using scraping commands.
+
+### Requirements
+
+- **Claude in Chrome** — real browser session for all scraping (Indeed, Stepstone, LinkedIn)
+- **LinkedIn session** (for `/find-leads` and `/lead-hunt --linkedin`) — an active LinkedIn login in Chrome
+- **No API keys required** — all scraping uses public web pages
+
+### Graceful Degradation
+
+All commands work without browser automation MCP configured. If no browser automation is available, the plugin asks the user to manually search job boards or LinkedIn and paste results.
 
 ## Example Workflows
 
@@ -80,16 +98,14 @@ Both scrapers filter out recruitment agencies:
 
 ### Technical Role Detection
 
-Two-tier filtering ensures relevant roles:
-1. Exclude: Sachbearbeiter, Buchhalter, Praktikant (end-users)
-2. Include: Consultant, Berater, Engineer, Developer (implementers)
+Exclude-only filtering removes non-technical roles (Sachbearbeiter, Buchhalter, Praktikant) while the search query itself provides the relevance signal.
 
 ### Function-Based LinkedIn Search
 
 Maps job titles to decision-maker searches:
-- SAP FI/CO → Head of Controlling, CFO, Finance Director
-- Data Engineer → Head of Data, CDO, Analytics Director
-- Product Manager → Head of Product, CPO, VP Product
+- SAP FI/CO -> Head of Controlling, CFO, Finance Director
+- Data Engineer -> Head of Data, CDO, Analytics Director
+- Product Manager -> Head of Product, CPO, VP Product
 
 ### Smart Deduplication
 
@@ -102,12 +118,11 @@ Jobs found on both boards are:
 
 Connect browser automation tools for the best experience:
 
-**Included MCP connections:**
-- Playwright (plugin-playwright) for Indeed and Stepstone scraping
-- Claude in Chrome for LinkedIn search
+**Required:**
+- Claude in Chrome for all scraping (Indeed, Stepstone, LinkedIn)
 
-**Alternative options:**
-- See [CONNECTORS.md](CONNECTORS.md) for other browser automation tools
+**Details:**
+- See [CONNECTORS.md](CONNECTORS.md) for browser automation requirements
 
 ## Security
 
@@ -116,3 +131,17 @@ All scraped content is treated as untrusted data:
 - Profile data is user-provided and unverified
 - Rate limits are respected to protect accounts
 - LinkedIn extraction only - no automated outreach
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Chrome not connected | Ensure Claude in Chrome is running and the MCP server is active |
+| LinkedIn rate limited | Wait 24 hours, reduce batch size with `--batch-size 3` |
+| No jobs found | Try broader search terms or check that the job board is accessible |
+| CAPTCHA on Indeed/Stepstone | Complete the CAPTCHA manually, then retry |
+| LinkedIn login required | Ensure the browser has an active LinkedIn session |
+
+## License
+
+MIT

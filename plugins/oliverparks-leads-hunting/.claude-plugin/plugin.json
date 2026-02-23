@@ -4,5 +4,8 @@
   "description": "Parallel job scraping from Indeed and Stepstone, LinkedIn hiring manager discovery, and intelligent lead prioritization.",
   "author": {
     "name": "Oliver Parks"
-  }
+  },
+  "keywords": ["recruiting", "leads", "indeed", "stepstone", "linkedin", "job-scraping", "hiring-manager", "germany"],
+  "license": "MIT",
+  "mcpServers": "./.mcp.json"
 }

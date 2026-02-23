@@ -180,6 +180,15 @@ Wait for all tasks to complete
 Collect results from each task
 ```
 
+**"Parallel" means interleaved, not concurrent.** With browser automation MCP, JavaScript extraction runs one call at a time. True concurrent execution across tabs is not possible. The actual workflow is:
+
+1. Create tab A (Indeed) → navigate A to search URL
+2. Create tab B (Stepstone) → navigate B to search URL
+3. Extract from tab A (while B has finished loading)
+4. Extract from tab B
+
+This is faster than fully sequential (A loads while B navigates), but extraction calls are serial.
+
 **Tab isolation (critical):** Each scraper MUST call `browser_tabs(action: "new")` in Stage 2 to create its own dedicated tab. Never reuse existing tabs — when multiple scrapers run in parallel, existing tabs belong to other scraper instances. Reusing them will hijack the other scraper's session and corrupt both results.
 
 ### Step 3: Merge & Deduplicate
@@ -217,6 +226,10 @@ Match leads to jobs by company, then sort by lead count (most leads first).
 
 Produce a multi-tab XLSX workbook. Each data source gets its own worksheet tab.
 
+**URL construction (MCP workaround):** The scrapers return raw IDs/paths instead of full URLs because the Chrome MCP tool blocks JavaScript returns containing URL query strings. Always construct full URLs at this step:
+- Indeed: `https://de.indeed.com/viewjob?jk=${job.jk}`
+- Stepstone: `https://www.stepstone.de${job.href}`
+
 **Tab 1: "Indeed Jobs"** — Jobs scraped from Indeed
 
 | Column | Source |
@@ -228,7 +241,7 @@ Produce a multi-tab XLSX workbook. Each data source gets its own worksheet tab.
 | Salary | `job.salary` |
 | Remote | `job.workType` or empty |
 | Posted | `job.posted` |
-| Job URL | Constructed from `job.jk` |
+| Job URL | Constructed: `https://de.indeed.com/viewjob?jk=${job.jk}` |
 
 **Tab 2: "Stepstone Jobs"** — Jobs scraped from Stepstone
 
@@ -241,7 +254,7 @@ Produce a multi-tab XLSX workbook. Each data source gets its own worksheet tab.
 | Salary | `job.salary` |
 | Remote | `job.workType` |
 | Posted | `job.posted` |
-| Job URL | Constructed from `job.href` |
+| Job URL | Constructed: `https://www.stepstone.de${job.href}` |
 
 **Tab 3: "Hiring Managers"** (only if `--linkedin`) — Non-HR leads (IT decision-makers, department heads)
 
@@ -280,6 +293,11 @@ For export format examples (XLSX tabs, CSV, JSON) and `generateXLSXData()` imple
 |  Hiring Managers:   52                                     |
 |  HR Contacts:       37                                     |
 +------------------------------------------------------------+
+```
+
+If Stepstone returned stop boundary telemetry (via `meta.stopBoundarySkipped`), include it:
+```
+|  Stepstone: 4 exact matches + 20 related results excluded  |
 ```
 
 After the summary, show top opportunities sorted by lead count, then export filename.

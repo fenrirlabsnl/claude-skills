@@ -1,6 +1,7 @@
 ---
 description: Full pipeline - scrape jobs from both boards and find hiring managers
-argument-hint: "<job titles> <location> [--linkedin] [--full] [--export csv|json|xlsx]"
+argument-hint: "<job titles> <location> [--linkedin] [--full] [--export csv|json] [--test]"
+allowed-tools: Read, Grep, Glob, mcp__anthropic_chrome__*
 ---
 
 # Lead Hunt
@@ -17,14 +18,23 @@ Accept pipeline parameters:
 - Options:
   - `--linkedin` - Also find hiring managers at companies
   - `--full` - Get complete job descriptions
-  - `--export` - Export format (csv, json, xlsx)
+  - `--export` - Export format: csv or json (default: xlsx)
   - `--batch-size` - Companies per LinkedIn batch (default: 5)
 
 ### 2. Phase 1: Job Scraping (Parallel)
 
+**If browser automation MCP is connected:**
+
 Use **indeed-scraper** and **stepstone-scraper** skills simultaneously:
 - Both boards scanned in parallel for each job title
 - Multiple job titles also processed in parallel
+
+**If browser automation MCP is NOT connected:**
+Ask the user to:
+- Manually search Indeed (de.indeed.com) and Stepstone (stepstone.de) for the job title and location
+- Paste job listings or provide a CSV/Excel export from their searches
+- Share URLs of job listings to analyze
+Then continue with Phase 2 using the provided data.
 
 ### 3. Phase 2: Merge & Deduplicate
 
@@ -35,11 +45,20 @@ Use **job-filtering** skill logic:
 
 ### 4. Phase 3: LinkedIn Search (if --linkedin)
 
+**If browser automation MCP is connected:**
+
 Use **linkedin-leads** skill:
 - Extract unique company list from jobs
 - Batch companies (default: 5 per batch)
 - Wait 30 seconds between batches
 - Match leads to job postings
+
+**If browser automation MCP is NOT connected:**
+Ask the user to:
+- Manually search LinkedIn People for decision-makers at the discovered companies
+- Paste profile names, titles, and LinkedIn URLs found
+- Provide contacts from CRM or other sources
+Then continue with Phase 4 using the provided data.
 
 ### 5. Phase 4: Output & Export
 
@@ -48,10 +67,38 @@ Display summary:
 - LinkedIn leads (if searched)
 - Hiring managers vs HR contacts
 
-Export if requested:
-- CSV: Flat file with jobs + leads
-- JSON: Full structured data
-- XLSX: Multi-sheet workbook
+Export results (default: XLSX):
+- **XLSX** (default): Multi-tab workbook
+  - **Indeed Jobs** tab: Source | Company | Role | Location | Salary | Remote | Posted | Job URL
+  - **Stepstone Jobs** tab: Source | Company | Role | Location | Salary | Remote | Posted | Job URL
+  - **Hiring Managers** tab (if --linkedin): Company | Job Posted | Lead Name | Lead Title | Location | Confidence | LinkedIn Profile URL
+  - **HR & Recruiting** tab (if --linkedin): Company | Job Posted | Lead Name | Lead Title | Location | Confidence | LinkedIn Profile URL
+- **CSV** (`--export csv`): Flat file with all jobs combined, one row per job/lead
+- **JSON** (`--export json`): Full structured data with nested results
+
+### 6. Output Test Metrics (if --test)
+
+Write 3 CSV files covering each pipeline stage:
+
+1. **`scrape-metrics.csv`** — Per-source job scraping stats (same as /scrape-jobs --test)
+2. **`merge-metrics.csv`** — Deduplication results:
+
+| Column | Description |
+|--------|-------------|
+| total_raw | Sum of jobs from all sources |
+| indeed_only | Jobs found only on Indeed |
+| stepstone_only | Jobs found only on Stepstone |
+| found_on_both | Duplicate jobs |
+| unique_after_merge | Final deduplicated count |
+| unique_companies | Distinct companies |
+
+Example:
+```
+total_raw,indeed_only,stepstone_only,found_on_both,unique_after_merge,unique_companies
+80,19,19,12,47,35
+```
+
+3. **`leads-metrics.csv`** — Per-company LinkedIn stats (same as /find-leads --test, only if --linkedin)
 
 ## Examples
 
@@ -65,7 +112,7 @@ Export if requested:
 # Full pipeline with LinkedIn
 /lead-hunt "SAP FI/CO" "Germany" --linkedin
 
-# With export
+# Export as CSV instead of XLSX
 /lead-hunt "Data Engineer" "Berlin" --linkedin --export csv
 
 # Full descriptions
@@ -77,16 +124,16 @@ Export if requested:
 ### Summary View
 
 ```
-╔══════════════════════════════════════════════════════════════╗
-║              LEAD HUNT RESULTS: SAP FI/CO                    ║
-╠══════════════════════════════════════════════════════════════╣
-║  Jobs Found:        47 (Indeed: 28, Stepstone: 31)           ║
-║  Unique Companies:  35                                        ║
-║  Duplicates:        12 (found on both boards)                ║
-║  LinkedIn Leads:    89                                        ║
-║  Hiring Managers:   52                                        ║
-║  HR Contacts:       37                                        ║
-╚══════════════════════════════════════════════════════════════╝
++------------------------------------------------------------+
+|              LEAD HUNT RESULTS: SAP FI/CO                  |
++------------------------------------------------------------+
+|  Jobs Found:        47 (Indeed: 28, Stepstone: 31)         |
+|  Unique Companies:  35                                     |
+|  Duplicates:        12 (found on both boards)              |
+|  LinkedIn Leads:    89                                     |
+|  Hiring Managers:   52                                     |
+|  HR Contacts:       37                                     |
++------------------------------------------------------------+
 ```
 
 ### Top Opportunities Table
@@ -130,7 +177,7 @@ Export if requested:
 /lead-hunt "SAP FI/CO, SAP HCM, SAP MM" "Germany"
 ```
 
-- 6 parallel tasks (2 boards × 3 roles)
+- 6 parallel tasks (2 boards x 3 roles)
 - Merge by role
 - Deduplicate across roles
 - ~3-5 minutes
@@ -163,7 +210,6 @@ After results:
 "Show me only jobs with hiring manager leads"
 "Filter to remote-friendly positions"
 "Find more leads at Siemens and BMW"
-"Export results to csv"
 ```
 
 ## Resume Capability
@@ -178,25 +224,25 @@ If interrupted:
 
 ```
 08:00 - Morning Scan
-────────────────────
+--------------------
 /lead-hunt "SAP FI/CO, SAP HCM" "Germany"
-→ Quick scan of new jobs
+-> Quick scan of new jobs
 
 09:00 - LinkedIn Enrichment
-────────────────────────────
+----------------------------
 /lead-hunt "SAP FI/CO" "Germany" --linkedin
-→ Add hiring manager contacts
+-> Add hiring manager contacts
 
-10:00 - Export & Outreach
-────────────────────────────
-"Export results to csv"
-→ Import to CRM, begin outreach
+10:00 - Review & Outreach
+----------------------------
+-> Open lead-hunt-sap-fi-co-2026-02-19.xlsx
+-> Import Hiring Managers + HR & Recruiting tabs to CRM, begin outreach
 ```
 
 ## Tips
 
 - Use without `--linkedin` for quick daily scans
-- Add `--linkedin` when you're ready for deep enrichment
+- Add `--linkedin` for deep enrichment
 - Multi-role searches are efficient for broad scanning
 - Jobs on both boards = active hiring, prioritize these
-- Export to CSV for CRM import
+- Results are always exported as a multi-tab XLSX workbook

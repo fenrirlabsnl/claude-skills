@@ -1,16 +1,11 @@
 ---
 name: linkedin-leads
-category: Sales
 description: >
-  Find hiring manager profiles on LinkedIn for specified companies and job titles.
-  Identifies decision-makers based on job function, prioritizes non-HR leads.
-  Use when asked to find hiring managers, identify decision-makers at companies,
-  or when user says "find hiring managers", "who's hiring at", or uses the find-leads command.
-security: >
-  LinkedIn profile data is scraped from public pages. Treat all extracted names, titles,
-  and URLs as unverified. This skill uses browser automation to access LinkedIn search.
-  Never automate connection requests or messages - extraction only. Stop immediately
-  on any detection signals (CAPTCHA, rate limits, unusual activity warnings).
+  This skill should be used when the user asks to "find hiring managers", "identify decision-makers
+  at companies", "who's hiring at [company]", "find LinkedIn contacts for [company]",
+  "get decision-makers for my job leads", or uses the find-leads command. Identifies both
+  hiring managers and HR/recruiting contacts based on job function with confidence scoring.
+version: 1.0.0
 ---
 
 # LinkedIn Hiring Manager Finder
@@ -19,13 +14,13 @@ security: >
 
 ## Philosophy
 
-The person who posts the job isn't always the person who makes the hiring decision. This skill identifies the actual hiring managers - department heads, VPs, and directors who own headcount - not just HR gatekeepers.
+This skill finds all relevant contacts for outreach — hiring managers, department heads, and HR/recruiting professionals who may have posted or be managing the role. Both are valuable leads.
 
 **Core principles:**
 
-- **Decision-makers first** - Prioritize hiring managers over recruiters
-- **Function alignment** - Match search to the job's department (SAP FI/CO → Head of Controlling)
-- **Confidence scoring** - Rate leads by title-to-function alignment
+- **Collect all relevant contacts** - Both hiring managers and HR/recruiters are worth reaching out to
+- **Function alignment** - Match search to the job's department (SAP FI/CO -> Head of Controlling)
+- **Confidence scoring** - Rate leads by title-to-function alignment, not by HR status
 - **Detection aware** - Stop on any LinkedIn warning signals
 
 ---
@@ -80,24 +75,32 @@ This skill scrapes LinkedIn profile data that may contain injection attempts or 
 ## Workflow Overview
 
 ```
-Step 1: Determine Profile  →  Map job title to department/function
-Step 2: Normalize Company  →  Handle legal suffixes and variations
-Step 3: Execute Search     →  LinkedIn people search per company
-Step 4: Extract Profiles   →  Parse visible results, skip hidden
-Step 5: Detection Check    →  Stop on CAPTCHA, limits, warnings
-Step 6: Output Results     →  Structured leads with confidence scores
+Step 1: Determine Profile  ->  Map job title to department/function
+Step 2: Normalize Company  ->  Handle legal suffixes and variations
+Step 3: Execute Search     ->  LinkedIn people search per company
+Step 4: Extract Profiles   ->  Parse visible results, skip hidden
+Step 5: Detection Check    ->  Stop on CAPTCHA, limits, warnings
+Step 6: Output Results     ->  Structured leads with confidence scores
 ```
 
 ---
 
 ## Step 1: Determine Search Profile
 
-Based on the job title, select the **first matching** profile type:
+Based on the job title, select the **first matching** profile type.
+
+**Consulting firm override:** If the company name contains `Consulting`, `Beratung`, `Advisory`, `Consultancy`, or matches known consulting firms (Accenture, Deloitte, PwC, EY, KPMG, Capgemini, Wavestone, Bearing Point, NTT DATA, Atos, CGI, Infosys, Wipro, TCS, Cognizant, McKinsey, BCG), use the **Consulting Leadership** profile regardless of job title:
+
+| Company Contains | Profile Type | Search Terms |
+|------------------|--------------|--------------|
+| Consulting, Beratung, Advisory, Consultancy, or known firm | Consulting Leadership | Partner, Managing Director, Practice Lead, Associate Partner, Director |
+
+Otherwise, select the **first matching** profile type by job title:
 
 | Job Title Contains | Profile Type | Search Terms |
 |--------------------|--------------|--------------|
 | SAP FI, SAP CO, FICO, Controlling | SAP FICO | Head of Controlling, Finance Director, CFO |
-| SAP HCM, SuccessFactors, Payroll | SAP HCM | HR Director, Head of HR, CHRO |
+| SAP HCM, SuccessFactors, Payroll | SAP HCM | HR Director, Head of HR, CHRO, Head of People, Personalleiter, Leitung Personal, Head of SAP, IT Director |
 | SAP MM, SAP SD, Supply Chain | SAP Supply Chain | Supply Chain Director, Head of Logistics |
 | SAP PP, Manufacturing, Plant | SAP Manufacturing | Plant Manager, Head of Production |
 | SAP ABAP, SAP Basis, Technical | SAP Technical | IT Director, Head of SAP, CIO |
@@ -111,92 +114,7 @@ Based on the job title, select the **first matching** profile type:
 | Operations, Admin, Finance | Operations | COO, Head of Operations, Finance Director |
 | (no match) | Generic | HR Director, Talent Acquisition |
 
-### Profile Selection JavaScript
-
-```javascript
-function determineSearchProfile(jobTitle) {
-  const title = jobTitle.toLowerCase();
-
-  const profiles = [
-    {
-      keywords: ['sap fi', 'sap co', 'fico', 'fi/co', 'controlling'],
-      type: 'SAP FICO',
-      searchTerms: ['Head of Controlling', 'Finance Director', 'CFO']
-    },
-    {
-      keywords: ['sap hcm', 'successfactors', 'payroll', 'hr module'],
-      type: 'SAP HCM',
-      searchTerms: ['HR Director', 'Head of HR', 'CHRO']
-    },
-    {
-      keywords: ['sap mm', 'sap sd', 'supply chain', 'logistics', 'procurement'],
-      type: 'SAP Supply Chain',
-      searchTerms: ['Supply Chain Director', 'Head of Logistics', 'VP Supply Chain']
-    },
-    {
-      keywords: ['sap pp', 'manufacturing', 'plant', 'production'],
-      type: 'SAP Manufacturing',
-      searchTerms: ['Plant Manager', 'Head of Production', 'VP Manufacturing']
-    },
-    {
-      keywords: ['sap abap', 'sap basis', 'sap technical', 'sap developer'],
-      type: 'SAP Technical',
-      searchTerms: ['IT Director', 'Head of SAP', 'CIO']
-    },
-    {
-      keywords: ['sap'],
-      type: 'SAP Generic',
-      searchTerms: ['Head of SAP', 'IT Director', 'CIO']
-    },
-    {
-      keywords: ['engineer', 'developer', 'software', 'backend', 'frontend', 'fullstack'],
-      type: 'Engineering',
-      searchTerms: ['VP Engineering', 'CTO', 'Engineering Director', 'Head of Engineering']
-    },
-    {
-      keywords: ['data', 'analytics', 'bi', 'business intelligence', 'machine learning'],
-      type: 'Data',
-      searchTerms: ['Head of Data', 'CDO', 'Analytics Director', 'VP Data']
-    },
-    {
-      keywords: ['marketing', 'brand', 'growth', 'digital marketing'],
-      type: 'Marketing',
-      searchTerms: ['CMO', 'VP Marketing', 'Head of Marketing', 'Marketing Director']
-    },
-    {
-      keywords: ['sales', 'account', 'business dev', 'revenue'],
-      type: 'Sales',
-      searchTerms: ['VP Sales', 'CRO', 'Sales Director', 'Head of Sales']
-    },
-    {
-      keywords: ['product manager', 'product owner', 'product lead'],
-      type: 'Product',
-      searchTerms: ['Head of Product', 'CPO', 'VP Product', 'Product Director']
-    },
-    {
-      keywords: ['design', 'ux', 'ui', 'creative'],
-      type: 'Design',
-      searchTerms: ['Head of Design', 'Creative Director', 'VP Design']
-    },
-    {
-      keywords: ['operations', 'admin', 'finance', 'accounting'],
-      type: 'Operations',
-      searchTerms: ['COO', 'Head of Operations', 'Finance Director', 'VP Operations']
-    }
-  ];
-
-  for (const profile of profiles) {
-    if (profile.keywords.some(kw => title.includes(kw))) {
-      return profile;
-    }
-  }
-
-  return {
-    type: 'Generic',
-    searchTerms: ['HR Director', 'Talent Acquisition', 'Head of HR']
-  };
-}
-```
+For the profile selection and confidence scoring JavaScript implementations, see **`references/extraction-scripts.md`**.
 
 ### Confidence Scoring
 
@@ -206,79 +124,20 @@ function determineSearchProfile(jobTitle) {
 | **Medium** | Related department or seniority level (e.g., "Finance Manager" for FI/CO role) |
 | **Low** | Generic management title (e.g., "Director" without department) |
 
-```javascript
-function assignConfidence(profileType, personTitle) {
-  const title = personTitle.toLowerCase();
-
-  const highConfidenceMap = {
-    'SAP FICO': ['controlling', 'finance director', 'cfo', 'financial controller'],
-    'SAP HCM': ['hr director', 'chro', 'head of hr', 'people'],
-    'SAP Supply Chain': ['supply chain', 'logistics', 'procurement'],
-    'SAP Manufacturing': ['plant manager', 'production', 'manufacturing'],
-    'SAP Technical': ['head of sap', 'it director', 'cio'],
-    'Engineering': ['vp engineering', 'cto', 'engineering director'],
-    'Data': ['head of data', 'cdo', 'analytics director'],
-    'Marketing': ['cmo', 'marketing director', 'head of marketing'],
-    'Sales': ['vp sales', 'cro', 'sales director'],
-    'Product': ['head of product', 'cpo', 'vp product'],
-    'Design': ['head of design', 'creative director'],
-    'Operations': ['coo', 'head of operations']
-  };
-
-  const keywords = highConfidenceMap[profileType] || [];
-  if (keywords.some(kw => title.includes(kw))) return 'high';
-
-  if (title.includes('director') || title.includes('head of') || title.includes('vp ') || title.includes('chief')) {
-    return 'medium';
-  }
-
-  return 'low';
-}
-```
-
 ---
 
 ## Step 2: Normalize Company Name
 
-Try these variations **in order** until LinkedIn's company dropdown shows a match:
+Try these variations **in order** until LinkedIn's company dropdown shows a match. The first-two-words strategy is tried first because LinkedIn's dropdown matches best on short, distinctive names.
 
 | Priority | Transformation | Example |
 |----------|---------------|---------|
-| 1 | Original | "Media-Saturn Deutschland GmbH" |
-| 2 | Remove legal suffixes | "Media-Saturn Deutschland" |
-| 3 | First 2 words only | "Media-Saturn" |
+| 1 | First 2 words (after removing suffixes) | "Media Saturn" |
+| 2 | Without legal suffixes | "Media-Saturn Deutschland" |
+| 3 | Original name | "Media-Saturn Deutschland GmbH" |
+| 4 | First word only | "Media" |
 
-### Legal Suffixes to Remove
-
-```javascript
-const legalSuffixes = [
-  'GmbH', 'SE', 'AG', 'Inc', 'Inc.', 'Ltd', 'Ltd.', 'KG', 'Co.', 'Corp', 'Corp.',
-  'LLC', 'B.V.', 'S.A.', 'S.A', 'PLC', 'N.V.', 'e.V.', 'KGaA', 'mbH', 'OHG',
-  '& Co.', '& Co', 'Co., KG', 'Deutschland', 'Germany', 'Europe'
-];
-
-function normalizeCompanyName(original) {
-  const variations = [original];
-
-  let cleaned = original;
-  for (const suffix of legalSuffixes) {
-    const regex = new RegExp(`\\s*${suffix.replace('.', '\\.')}\\s*$`, 'i');
-    cleaned = cleaned.replace(regex, '').trim();
-  }
-  if (cleaned !== original) variations.push(cleaned);
-
-  const words = cleaned.split(/[\s-]+/);
-  if (words.length > 2) {
-    variations.push(words.slice(0, 2).join(' '));
-  }
-
-  if (words.length > 1) {
-    variations.push(words[0]);
-  }
-
-  return variations;
-}
-```
+For the normalization JavaScript implementation, see **`references/extraction-scripts.md`** — Company Name Normalization.
 
 ---
 
@@ -288,53 +147,96 @@ function normalizeCompanyName(original) {
 
 For each company:
 
-1. **Navigate** to LinkedIn People Search
-   - Standard: `https://www.linkedin.com/search/results/people/`
-   - Talent: Use Recruiter/Sales Navigator search interface
+1. **Build search URL** using Approach B (default):
+   - Combine quoted company name + **one** search term from Step 1
+   - Navigate directly to the constructed URL
 
-2. **Enter company name**
-   - Type in "Current company" filter
-   - Wait for dropdown suggestions
-   - Select matching company (or try next variation)
+2. **Read results** with `get_page_text` (Step 4)
 
-3. **Enter search term** from selected profile (Step 1)
+3. **Extract profile URLs** with JS extraction (Step 4)
 
-4. **Extract visible profiles** (Step 4)
+4. **If <3 results**, rebuild URL with the **next single** search term from profile
 
-5. **If <3 results**, try next search term from profile
-
-6. **Repeat** for remaining search terms until sufficient leads found
+5. **Repeat** with one term at a time until ≥3 results or all terms exhausted
 
 ### Search Execution Steps
 
 ```
-1. Navigate to LinkedIn search
-2. Click "All filters" or use filter sidebar
-3. Find "Current company" input
-4. Type company name variation
-5. Wait for dropdown (500ms)
-6. If match found: select it
-7. If no match: try next company name variation
-8. Add title/keyword filter
-9. Press Enter or click Search
-10. Wait for results to load
-11. Scroll down once (anti-detection)
-12. Extract profiles
+1. Normalize company name (Step 2)
+2. Build URL: keywords="CompanyName"+"SearchTerm1"  (ONE term only)
+3. Navigate to constructed URL
+4. Wait for results to load
+5. Scroll down once (anti-detection)
+6. Call get_page_text to read names and titles
+7. Run JS extraction for profile URLs
+8. If <3 results and more search terms remain, rebuild URL with the NEXT single term
+9. Repeat until ≥3 results or all terms exhausted
 ```
+
+### Search Approaches
+
+Both approaches carry similar detection risk. The real risk factors are **volume and profile click-throughs**, not how search results are reached.
+
+**Approach B: URL keyword search (default)**
+
+Navigate directly to:
+```
+https://www.linkedin.com/search/results/people/?keywords="CompanyName"+"SearchTerm1"&origin=GLOBAL_SEARCH_HEADER
+```
+
+**Critical: ONE search term per URL.** Do NOT combine terms with `+OR+`. LinkedIn's OR operator applies globally across the entire index — `"Ottobock"+"Head of Controlling"+OR+"CFO"` returns random CFOs and Finance Directors from unrelated companies because LinkedIn reads it as "Ottobock OR Head of Controlling OR CFO." Instead:
+
+1. Use the **first** search term from the profile (e.g., `"Ottobock"+"Controlling"`)
+2. If <3 results, navigate to a **new URL** with the **next** search term (e.g., `"Ottobock"+"Finance Director"`)
+3. Repeat until ≥3 results or all terms exhausted
+4. Deduplicate across searches (same person may appear for multiple terms)
+
+**Tip:** Use short, focused terms rather than full titles. `"Controlling"` outperforms `"Head of Controlling"` because it catches "Head of Functional Cost Controlling", "VP Controlling", etc.
+
+**Approach A: Company filter dropdown (fallback)**
+
+Only use if Approach B returns zero results for a company you're confident exists on LinkedIn. Type the company name into the "Current company" filter and select from the dropdown.
+
+When using Approach A:
+1. **Verify page state after "Show results"** — take a `browser_snapshot` to confirm the search results page is still displayed. If navigation occurred, use the browser back button and retry.
+2. **If dropdown shows no match** for any company name variation, mark as "not found" and move on.
+3. **One company at a time** — always clear the previous company filter before adding the next one.
+
+### Mandatory Pacing (applies to BOTH approaches)
+
+These pacing rules must always be followed — they are the primary detection mitigation, more important than which search approach is used.
+
+1. **2 second minimum wait** between company searches — this is a hard minimum, not a suggestion
+2. **Do not click through to individual profiles** unless the user explicitly requests it. Profile visits at speed are a stronger detection signal than search queries.
+3. **Max 25 searches per session** — if more companies remain, stop and report partial results
+4. **If any soft limit appears** (CAPTCHA, "searching a lot" message), stop immediately. Do not retry or wait-and-resume in the same session.
 
 ---
 
 ## Step 4: Extract Profile Data
 
+### Extraction Approach
+
+After navigating to the search results page, use a two-call pattern:
+
+1. **First call — `get_page_text`**: Reads all visible text (names, titles, connection degrees) in one call. Use this to:
+   - Confirm results exist (if "No results found", log 0 leads and move on)
+   - Read visible names and titles
+   - Identify which profiles are worth capturing URLs for
+
+2. **Second call — JS extraction**: Run the `a[href*="/in/"]` script from `references/extraction-scripts.md` to collect profile URLs for profiles identified in step 1.
+
+Screenshots are only needed when visually debugging a rendering problem — never as the primary way to read search results.
+
 ### Extraction Rules
 
-For each visible profile in results:
+For each visible profile:
 
 1. **SKIP if**: Name shows "LinkedIn Member" (privacy-protected)
 
 2. **Extract**:
-   - **Name**: Text before "•" separator
-   - **Title**: Line below name (clean extra whitespace)
+   - **Name**: Text before "." separator
+   - **Title**: First line below name that is NOT a connection degree indicator (skip lines matching "• 1st", "• 2nd", "• 3rd+", etc.)
    - **URL**: Profile link, strip query parameters
 
 3. **Mark `is_hr: true`** if title contains any of:
@@ -344,69 +246,36 @@ For each visible profile in results:
 
 4. **Assign confidence** based on title-to-function alignment
 
-### JavaScript Extraction Code
-
-```javascript
-function extractLinkedInProfiles() {
-  const profiles = [];
-
-  const cards = document.querySelectorAll('[data-chameleon-result-urn], .reusable-search__result-container');
-
-  cards.forEach(card => {
-    const nameEl = card.querySelector('.entity-result__title-text a span[aria-hidden="true"]') ||
-                   card.querySelector('.entity-result__title-text a');
-    const name = nameEl?.innerText?.split('•')[0]?.trim() || '';
-
-    if (!name || name === 'LinkedIn Member') return;
-
-    const titleEl = card.querySelector('.entity-result__primary-subtitle') ||
-                    card.querySelector('.entity-result__summary');
-    const title = titleEl?.innerText?.trim() || '';
-
-    const linkEl = card.querySelector('a[href*="/in/"]');
-    let url = linkEl?.href || '';
-    url = url.split('?')[0];
-
-    const hrKeywords = [
-      'recruiter', 'recruiting', 'talent acquisition', 'hr ', 'human resources',
-      'people operations', 'staffing', 'sourcer', 'employer branding',
-      'head of people', 'chief people'
-    ];
-    const isHR = hrKeywords.some(kw => title.toLowerCase().includes(kw));
-
-    profiles.push({ name, title, url, isHR });
-  });
-
-  return profiles;
-}
-```
+For the complete extraction JavaScript, see **`references/extraction-scripts.md`** — Profile Extraction.
 
 ### Priority Order
 
-1. Collect **non-HR leads first** (actual hiring managers)
-2. HR profiles are **fallback contacts** (gate to hiring manager)
+1. Collect **all matching leads** regardless of HR status
+2. Sort by **confidence score** (high -> medium -> low)
+3. The `is_hr` flag is kept as metadata for the user's reference
 
 ---
 
 ## Step 5: Detection Handling
 
-### STOP IMMEDIATELY if you see:
+### STOP IMMEDIATELY on these signals:
 
 | Signal | Action |
 |--------|--------|
 | CAPTCHA or verification challenge | Save data, stop, report partial |
 | "Unusual activity" warning | Save data, stop, report partial |
 | Forced re-login prompt | Save data, stop, report partial |
-| "You've reached the search limit" | Save data, stop, report partial |
+| "Reached the search limit" | Save data, stop, report partial |
 
 ### Detection Avoidance
 
+See **Mandatory Pacing** in Step 3 for the authoritative timing rules. Additional behavioral mitigations:
+
 ```
 - Always scroll before extracting (mimics human behavior)
-- Wait 2-3 seconds between searches
-- Don't exceed 25-30 searches per session
 - Randomize scroll amounts
 - Process 1 company at a time with pauses
+- Do not click through to individual profiles unless explicitly requested
 ```
 
 ### Status Codes
@@ -439,20 +308,6 @@ After each company, output:
       "linkedin_url": "https://linkedin.com/in/max-mustermann",
       "is_hr": false,
       "confidence": "high"
-    },
-    {
-      "name": "Anna Schmidt",
-      "title": "Finance Director",
-      "linkedin_url": "https://linkedin.com/in/anna-schmidt",
-      "is_hr": false,
-      "confidence": "high"
-    },
-    {
-      "name": "Thomas Weber",
-      "title": "Talent Acquisition Manager",
-      "linkedin_url": "https://linkedin.com/in/thomas-weber",
-      "is_hr": true,
-      "confidence": "low"
     }
   ],
   "search_terms_used": ["Head of Controlling", "Finance Director"]
@@ -469,8 +324,8 @@ After all companies:
   "companies_searched": 5,
   "total_leads_found": 23,
   "total_hr_contacts": 7,
-  "total_hiring_managers": 16,
-  "results": [ ...per-company results... ],
+  "total_non_hr_contacts": 16,
+  "results": [ "...per-company results..." ],
   "status": "completed"
 }
 ```
@@ -481,11 +336,12 @@ After all companies:
 
 1. **Process 1 company at a time**, report progress after each
 2. **Always scroll before extracting** (bot detection fingerprint)
-3. **Prefer specific hiring managers** over HR/recruiters
+3. **Include all relevant contacts** — both hiring managers and HR/recruiters
 4. **If no leads found** with primary terms, try broader titles
 5. **Deduplicate profiles** that appear in multiple searches
-6. **Stop on detection signals** - don't push through limits
+6. **Stop on detection signals** - do not push through limits
 7. **Never automate connection requests** - extraction only
+8. **Capture URLs before advancing** — Never move to the next company with profiles marked "URL to retrieve later." Run JS extraction before navigating away. A contact without a URL is unusable for outreach.
 
 ---
 
@@ -501,38 +357,9 @@ After all companies:
 
 ---
 
-## Integration with Job Scraper Skills
+## Additional Resources
 
-### Workflow
-
-```
-1. Run indeed-scraper or stepstone-scraper skill
-   → Get list of companies hiring for target role
-
-2. Extract company names from results
-
-3. Run linkedin-leads skill with those companies
-   → Get decision-maker contacts for outreach
-
-4. Prioritize outreach:
-   - High confidence hiring managers first
-   - Medium confidence as backup
-   - HR contacts as last resort (for referral)
-```
-
-### Example Pipeline
-
-```
-# Step 1: Find jobs (see indeed-scraper or stepstone-scraper skill)
-
-# Output includes:
-# - N-ERGIE Aktiengesellschaft
-# - Magni Deutschland GmbH
-# - Gasunie Deutschland Transport Services GmbH
-
-# Step 2: Find hiring managers
-Find leads for "SAP FI/CO Consultant" at "N-ERGIE, Magni Deutschland, Gasunie"
-```
+- **`references/extraction-scripts.md`** — Profile determination, confidence scoring, company normalization, and profile extraction JavaScript
 
 ---
 
@@ -542,61 +369,7 @@ Find leads for "SAP FI/CO Consultant" at "N-ERGIE, Magni Deutschland, Gasunie"
 |-------|----------|
 | Company not found | Try normalized variations |
 | No results for search term | Try next term in profile |
-| Too many HR results | Use more specific titles |
+| Too many generic results | Use more specific titles |
+| Public-sector / association name returns 0 or irrelevant results | Mark as "not indexed — public body/association" after one Approach B attempt. Do not try name variations. These organisations are systematically underrepresented on LinkedIn. **Markers:** Körperschaft, Kassenärztliche, eG, e.V., Vereinigung, Bundesdruckerei, Bundesamt, Bundesanstalt, Bundeswehr, Bundesagentur, Landesamt, Landesanstalt, Stadtverwaltung, Kreisverwaltung, Kommunal-, Stiftung des öffentlichen Rechts, Anstalt des öffentlichen Rechts. Also match `Bundes-` prefix + `-Gruppe` suffix combinations (e.g., Bundesdruckerei-Gruppe). |
 | Rate limited | Wait 24 hours, reduce batch size |
 | Logged out | Re-authenticate, slower pace |
-
----
-
-## Example Session
-
-```
-You: Find hiring managers for SAP FI/CO roles at N-ERGIE and tesa SE
-
-Claude: I'll find hiring managers for SAP FI/CO roles at these companies.
-
-Job title "SAP FI/CO Consultant" maps to profile: SAP FICO
-Search terms: Head of Controlling, Finance Director, CFO
-
-## Company 1: N-ERGIE
-
-[Navigates to LinkedIn, searches with company filter]
-[Scrolls, extracts profiles]
-
-Found 4 leads (2 hidden profiles skipped):
-
-| Name | Title | Confidence | HR? |
-|------|-------|------------|-----|
-| Klaus Weber | Head of Controlling | High | No |
-| Maria Fischer | Finance Director | High | No |
-| Stefan Braun | CFO | High | No |
-| Lisa Müller | Talent Acquisition | Low | Yes |
-
-## Company 2: tesa SE
-
-[Searches with "tesa" variation]
-[Extracts profiles]
-
-Found 3 leads (1 hidden profile skipped):
-
-| Name | Title | Confidence | HR? |
-|------|-------|------------|-----|
-| Thomas Schmidt | Head of Finance | High | No |
-| Anna Koch | Financial Controller | Medium | No |
-| Jan Becker | HR Business Partner | Low | Yes |
-
----
-
-## Summary
-
-- Companies searched: 2
-- Total leads: 7
-- Hiring managers: 5
-- HR contacts: 2
-- Status: completed
-
-Priority outreach order:
-1. Klaus Weber (N-ERGIE) - Head of Controlling
-2. Thomas Schmidt (tesa SE) - Head of Finance
-3. Maria Fischer (N-ERGIE) - Finance Director
-```

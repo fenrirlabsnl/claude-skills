@@ -56,7 +56,9 @@ If results seem sparse, try supplementary queries with alternate terms. For exam
 - `"FI CO" "Germany"` — abbreviated module names
 - `"S/4HANA Finance" "Germany"` — next-gen SAP branding
 
-MUST ensure "&fromage=1&sc=0bf%3Aexrec%28%29%3B&sort=date" in the URL. 
+MUST ensure "&fromage=1&sc=0bf%3Aexrec%28%29%3B&sort=date" in the URL.
+
+**When to skip supplementary queries:** If the primary query returns <5 results with the employer-only + 24h filters active, supplementary queries are very unlikely to add more — Indeed Germany has limited direct-employer volume for niche roles on any given day. Skip supplementary queries and proceed to merge. This saves 2-3 unnecessary page loads.
 
 The lead-orchestration skill supports comma-separated titles (e.g., `"SAP FI/CO, Finance Controlling IT" "Germany"`) to run these in parallel.
 

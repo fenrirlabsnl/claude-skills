@@ -2,53 +2,47 @@
 
 ## How tool references work
 
-Plugin files use `~~category` as a placeholder for whatever tool the user connects in that category. For example, `~~browser` might mean Playwright, Claude in Chrome, or any other browser automation with an MCP server.
+Plugin files use `~~category` as a placeholder for whatever tool the user connects in that category. For example, `~~browser` might mean Claude in Chrome or any other browser automation MCP server.
 
-Plugins are **tool-agnostic** — they describe workflows in terms of categories (browser automation, display, etc.) rather than specific products. The `.mcp.json` pre-configures specific MCP servers, but any MCP server in that category works.
+Plugins are **tool-agnostic** — they describe workflows in terms of categories (browser automation, display, etc.) rather than specific products.
 
 ## Connectors for this plugin
 
-| Category | Placeholder | Included servers | Other options |
-|----------|-------------|-----------------|---------------|
-| Browser automation | `~~browser` | Playwright (plugin-playwright) | Claude in Chrome, Puppeteer |
+| Category | Placeholder | Required server | Notes |
+|----------|-------------|----------------|-------|
+| Browser automation | `~~browser` | Claude in Chrome | Real browser session required — headless browsers are blocked |
 | Display | `~~display` | scrape-display | Custom renderers |
 | Export | `~~export` | Built-in (csv, json, xlsx) | Google Sheets, Airtable |
 
-## Browser Automation Details
+## Browser Automation: Claude in Chrome Only
 
-This plugin requires browser automation for web scraping. Two primary options:
+This plugin requires **Claude in Chrome** (or equivalent real-browser MCP server) for all web scraping. Headless browsers like Playwright are **not supported** — Indeed and Stepstone actively detect and block headless/automated browsers.
 
-### Playwright (Recommended)
+### Why not Playwright?
 
-- **Best for**: Job board scraping (Indeed, Stepstone)
-- **Why**: Headless operation, robust selectors, fast execution
-- **MCP server**: `plugin-playwright`
+- Indeed and Stepstone deploy bot detection that blocks headless browsers outright
+- These sites require a visible browser session with normal fingerprints
+- Playwright connections will fail with CAPTCHAs or blank pages
 
 ### Claude in Chrome
 
-- **Best for**: LinkedIn search (requires authentication)
-- **Why**: Uses your existing LinkedIn session, handles dynamic content
+- **Used for**: All scraping — Indeed, Stepstone, and LinkedIn
+- **Why**: Real browser session, normal fingerprints, bypasses bot detection
+- **LinkedIn bonus**: Uses your existing logged-in session for authenticated searches
 - **MCP server**: `Claude in Chrome`
-
-## Display Integration
-
-The `display_scraped_data` MCP tool renders job listings in an interactive format:
-- Card view with company, title, salary, location
-- Action buttons for each job (view, track, export)
-- Filtering and sorting controls
 
 ## Export Options
 
 Results can be exported to:
 - **CSV**: Flat file, CRM-compatible
 - **JSON**: Full structured data with nested leads
-- **XLSX**: Multi-sheet workbook (Jobs, Leads, Summary)
+- **XLSX**: Multi-sheet workbook (Indeed Jobs, Stepstone Jobs, Hiring Managers, HR & Recruiting)
 
 ## Authentication Notes
 
 ### Indeed / Stepstone
 - No authentication required
-- Public job listings are scraped directly
+- Public job listings scraped via real browser session
 
 ### LinkedIn
 - Requires active LinkedIn session in browser

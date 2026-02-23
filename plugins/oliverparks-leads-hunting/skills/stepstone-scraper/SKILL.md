@@ -127,6 +127,8 @@ Execute JavaScript to extract job data from the **filtered results only**. Steps
 
 Apply agency and non-technical filtering using the keyword lists defined in the **job-filtering** skill.
 
+**Return format:** The extraction script returns `{ jobs: [...], meta: { totalCardsOnPage, exactMatches, filteredOut, stopBoundarySkipped } }`. For niche queries (e.g., "SAP FI/CO"), Stepstone often shows very few exact matches before the stop boundary, then pads with related results. Report the `meta` stats to the user so sparse results are explained rather than confusing.
+
 For the complete extraction script, see **`references/extraction-scripts.md`** — Stage 4.
 
 ---

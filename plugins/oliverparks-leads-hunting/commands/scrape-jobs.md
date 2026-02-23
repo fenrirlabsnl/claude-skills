@@ -1,6 +1,7 @@
 ---
 description: Scrape job listings from Indeed and/or Stepstone Germany
-argument-hint: "<job title> <location> [--indeed|--stepstone|--both] [--full]"
+argument-hint: "<job title> <location> [--indeed|--stepstone|--both] [--full] [--test]"
+allowed-tools: Read, Grep, Glob, mcp__anthropic_chrome__*
 ---
 
 # Scrape Jobs
@@ -19,6 +20,8 @@ Accept job search parameters:
 
 ### 2. Route to Appropriate Skill(s)
 
+**If browser automation MCP is connected:**
+
 Based on platform selection:
 
 **If --indeed or no flag specified:**
@@ -36,21 +39,47 @@ Based on platform selection:
 - Merge results using **job-filtering** skill logic
 - Deduplicate jobs found on both boards
 
+**If browser automation MCP is NOT connected:**
+Ask the user to:
+- Manually search Indeed (de.indeed.com) and/or Stepstone (stepstone.de) and paste job listings
+- Provide a CSV export from their job board search
+- Share URLs of specific job listings to analyze
+
 ### 3. Apply Filtering
 
 See the **job-filtering** skill for:
 - Agency detection (30+ known agencies)
-- Technical role filtering (two-tier logic)
+- Technical role filtering (exclude-only logic)
 - Deduplication and merging
 
 ### 4. Display Results
 
-Use `display_scraped_data` MCP tool to render structured results with:
+Display structured results to the user with:
 - Job title and company
 - Location and salary
 - Remote work status
 - Posting time
 - Source (Indeed, Stepstone, or both)
+
+### 5. Output Test Metrics (if --test)
+
+Write `scrape-metrics.csv` with one row per source:
+
+| Column | Description |
+|--------|-------------|
+| source | "indeed" or "stepstone" |
+| raw_jobs | Jobs before any filtering |
+| agencies_filtered | Jobs removed by agency detection |
+| roles_filtered | Jobs removed by technical role filter |
+| final_count | Jobs after all filters |
+| duplicates | Jobs also found on other board |
+
+Example:
+```
+source,raw_jobs,agencies_filtered,roles_filtered,final_count,duplicates
+indeed,42,8,3,31,12
+stepstone,38,5,2,31,12
+```
 
 ## Examples
 
@@ -93,6 +122,6 @@ After results are displayed:
 ## Tips
 
 - Default mode scans both boards for comprehensive coverage
-- Use `--indeed` or `--stepstone` when you know which board has better results for your niche
+- Use `--indeed` or `--stepstone` when one board has better results for the niche
 - `--full` mode is slower but useful for detailed job analysis
 - Jobs found on both boards are flagged - these companies are actively hiring
