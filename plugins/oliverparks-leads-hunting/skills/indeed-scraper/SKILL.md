@@ -110,9 +110,9 @@ https://de.indeed.com/jobs?q={job_title}&l={location}&fromage=1&sc=0bf%3Aexrec%2
 
 Open a new Chrome tab to isolate this scraping session from other browser activity:
 
-1. Execute JavaScript via browser automation: `window.open('about:blank', '_blank')`
-2. Verify the new tab is active using `browser_tabs` — confirm focus is on the blank tab
-3. Navigate to the search URL in the new tab using browser automation
+1. Call `browser_tabs(action: "new")` to create a new tab — this guarantees a fresh tab and auto-focuses it (do **not** use `window.open`, which can silently reuse existing tabs)
+2. Call `browser_tabs(action: "list")` and confirm the new tab is the active one
+3. Navigate to the search URL using browser automation
 4. Call `get_page_text` to confirm the page loaded
 
 **Why a dedicated tab?** When running alongside other automations (e.g., Stepstone scraper or LinkedIn in parallel via `lead-hunt`), each scraper must operate in its own tab. Without this, concurrent scrapers overwrite each other's page and break extraction.
