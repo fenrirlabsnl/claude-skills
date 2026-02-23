@@ -108,14 +108,17 @@ https://de.indeed.com/jobs?q={job_title}&l={location}&fromage=1&sc=0bf%3Aexrec%2
 
 ## Stage 2: Open Dedicated Tab & Navigate
 
-Open a new Chrome tab to isolate this scraping session from other browser activity:
+**ALWAYS create a new tab.** Other scrapers may be running in parallel — reusing any existing tab will hijack their session.
 
-1. Call `browser_tabs(action: "new")` to create a new tab — this guarantees a fresh tab and auto-focuses it (do **not** use `window.open`, which can silently reuse existing tabs)
-2. Call `browser_tabs(action: "list")` and confirm the new tab is the active one
-3. Navigate to the search URL using browser automation
-4. Call `get_page_text` to confirm the page loaded
+1. Call `browser_tabs(action: "new")` — this creates a fresh blank tab and auto-focuses it
+2. Navigate to the search URL in this new tab using browser automation
+3. Call `get_page_text` to confirm the page loaded
 
-**Why a dedicated tab?** When running alongside other automations (e.g., Stepstone scraper or LinkedIn in parallel via `lead-hunt`), each scraper must operate in its own tab. Without this, concurrent scrapers overwrite each other's page and break extraction.
+**Critical rules:**
+- **NEVER reuse an existing tab**, even if one appears blank or idle — it may belong to another parallel scraper
+- **NEVER call `browser_tabs(action: "select")`** to switch to an existing tab for scraping
+- **NEVER use `window.open`** — it can silently reuse tabs
+- If `browser_tabs(action: "new")` fails, stop and report the error — do not fall back to an existing tab
 
 ---
 

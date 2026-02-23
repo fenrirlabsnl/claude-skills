@@ -180,7 +180,7 @@ Wait for all tasks to complete
 Collect results from each task
 ```
 
-**Tab isolation:** Each scraper skill opens its own dedicated Chrome tab via `browser_tabs(action: "new")` in Stage 2. This is what enables true parallel execution — without it, concurrent scrapers would overwrite each other's page. Do not skip or modify the tab-opening step in child skills.
+**Tab isolation (critical):** Each scraper MUST call `browser_tabs(action: "new")` in Stage 2 to create its own dedicated tab. Never reuse existing tabs — when multiple scrapers run in parallel, existing tabs belong to other scraper instances. Reusing them will hijack the other scraper's session and corrupt both results.
 
 ### Step 3: Merge & Deduplicate
 
