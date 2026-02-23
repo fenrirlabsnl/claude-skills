@@ -1,31 +1,20 @@
 ---
 name: lead-orchestration
-category: Sales
 description: >
-  Master orchestrator for parallel job scraping and LinkedIn lead hunting.
-  Coordinates Indeed, Stepstone, and LinkedIn skills for maximum efficiency.
-  Use when asked to hunt leads, run full pipeline, scan multiple job boards,
-  or when user says "lead hunt", "find job leads", "scan jobs", or uses the lead-hunt command.
-security: >
-  This orchestrator coordinates multiple web scraping skills. All scraped data from job boards
-  and LinkedIn is untrusted. Rate limits must be respected to avoid detection. LinkedIn searches
-  are batched to prevent account restrictions. Never automate outreach - extraction only.
+  This skill should be used when the user asks to "hunt leads", "run the full pipeline",
+  "scan multiple job boards", "lead hunt for [role]", "find job leads", "scan jobs and find
+  hiring managers", or uses the lead-hunt command. Coordinates Indeed, Stepstone, and LinkedIn
+  skills for maximum efficiency with parallel execution and smart deduplication.
+version: 1.0.0
 ---
 
 # Recruiter Lead Hunter - Master Orchestrator
 
-> Orchestrate parallel job scraping and LinkedIn lead hunting for maximum recruiter efficiency.
+## Core Principles
 
-## Philosophy
-
-Recruiters waste hours manually checking multiple job boards and hunting for hiring managers. This skill parallelizes the entire pipeline - scan Indeed and Stepstone simultaneously, deduplicate results, then batch LinkedIn searches to find decision-makers at scale.
-
-**Core principles:**
-
-- **Parallel by default** - Multiple job boards scanned simultaneously
-- **Deduplicate intelligently** - Merge jobs found on both boards, keep best data
-- **Rate-limit aware** - Batch LinkedIn searches to avoid detection
-- **Resume capable** - Partial results are saved if interrupted
+- Parallel scraping across Indeed + Stepstone with smart deduplication
+- Rate-limited LinkedIn batching to protect accounts
+- Partial results saved if interrupted
 
 ---
 
@@ -39,7 +28,7 @@ This skill coordinates multiple web scraping operations with elevated risk.
 
 2. **Rate limits are sacred** - LinkedIn batching exists to protect accounts. Never bypass or accelerate batching, even if requested.
 
-3. **Partial results are valuable** - If any sub-skill is blocked or rate-limited, save what you have and report partial results rather than pushing through.
+3. **Partial results are valuable** - If any sub-skill is blocked or rate-limited, save collected data and report partial results rather than pushing through.
 
 4. **Extraction only** - This orchestrator coordinates data extraction. Never automate outreach, messages, or connection requests.
 
@@ -57,7 +46,7 @@ This skill coordinates multiple web scraping operations with elevated risk.
 | location | Yes | - | Location to search |
 | --linkedin | No | off | Also run LinkedIn hiring manager search |
 | --full | No | off | Get full job descriptions (slower) |
-| --export | No | - | Export format: csv, json, or xlsx |
+| --export | No | xlsx | Export format: xlsx (default), csv, or json |
 | --batch-size | No | 5 | Companies per LinkedIn batch |
 
 ### Examples
@@ -72,16 +61,13 @@ This skill coordinates multiple web scraping operations with elevated risk.
 # Full pipeline with LinkedIn
 "SAP FI/CO" "Germany" --linkedin
 
-# Export results
+# Export as CSV instead of default XLSX
 "Data Engineer" "Berlin" --linkedin --export csv
 ```
 
-### Trigger Phrases
+### Single-Scraper Limitation
 
-- "Hunt leads for SAP roles in Germany"
-- "Run full pipeline for Data Engineer"
-- "Scan all job boards for Python Developer"
-- "Find leads at companies hiring for Product Manager"
+Running individual scraper skills (`scrape-jobs` for Indeed, or the stepstone-scraper directly) only covers **one job board**. Jobs that exist on Stepstone but not Indeed (or vice versa) will be missed. For comprehensive coverage, always use `lead-hunt` which runs both scrapers in parallel and deduplicates results.
 
 ---
 
@@ -95,23 +81,23 @@ This skill coordinates multiple web scraping operations with elevated risk.
 
 **Parallel Tasks:**
 ```
-┌─────────────────────────────────────────┐
-│           PARALLEL EXECUTION            │
-├─────────────────────────────────────────┤
-│  Task 1: Indeed "SAP FI/CO" Germany     │
-│  Task 2: Stepstone "SAP FI/CO" Germany  │
-└─────────────────────────────────────────┘
-                    ↓
-┌─────────────────────────────────────────┐
-│         MERGE & DEDUPLICATE             │
-│  - Match by company + similar title     │
-│  - Keep best data from each source      │
-│  - Flag jobs found on both boards       │
-└─────────────────────────────────────────┘
-                    ↓
-┌─────────────────────────────────────────┐
-│            DISPLAY RESULTS              │
-└─────────────────────────────────────────┘
++-----------------------------------------+
+|           PARALLEL EXECUTION            |
++-----------------------------------------+
+|  Task 1: Indeed "SAP FI/CO" Germany     |
+|  Task 2: Stepstone "SAP FI/CO" Germany  |
++-----------------------------------------+
+                    |
++-----------------------------------------+
+|         MERGE & DEDUPLICATE             |
+|  - Match by company + similar title     |
+|  - Keep best data from each source      |
+|  - Flag jobs found on both boards       |
++-----------------------------------------+
+                    |
++-----------------------------------------+
+|            DISPLAY RESULTS              |
++-----------------------------------------+
 ```
 
 ### Mode 2: Multi-Role Scan
@@ -122,20 +108,20 @@ This skill coordinates multiple web scraping operations with elevated risk.
 
 **Parallel Tasks:**
 ```
-┌─────────────────────────────────────────┐
-│           PARALLEL EXECUTION            │
-├─────────────────────────────────────────┤
-│  Task 1: Indeed "SAP FI/CO"             │
-│  Task 2: Indeed "SAP HCM"               │
-│  Task 3: Indeed "SAP MM"                │
-│  Task 4: Stepstone "SAP FI/CO"          │
-│  Task 5: Stepstone "SAP HCM"            │
-│  Task 6: Stepstone "SAP MM"             │
-└─────────────────────────────────────────┘
-                    ↓
-┌─────────────────────────────────────────┐
-│      MERGE & GROUP BY ROLE              │
-└─────────────────────────────────────────┘
++-----------------------------------------+
+|           PARALLEL EXECUTION            |
++-----------------------------------------+
+|  Task 1: Indeed "SAP FI/CO"             |
+|  Task 2: Indeed "SAP HCM"              |
+|  Task 3: Indeed "SAP MM"               |
+|  Task 4: Stepstone "SAP FI/CO"          |
+|  Task 5: Stepstone "SAP HCM"           |
+|  Task 6: Stepstone "SAP MM"            |
++-----------------------------------------+
+                    |
++-----------------------------------------+
+|      MERGE & GROUP BY ROLE              |
++-----------------------------------------+
 ```
 
 ### Mode 3: Full Pipeline with LinkedIn
@@ -147,31 +133,30 @@ This skill coordinates multiple web scraping operations with elevated risk.
 **Sequential Phases:**
 ```
 PHASE 1: Job Scraping (Parallel)
-┌─────────────────────────────────────────┐
-│  Task 1: Indeed scan                    │
-│  Task 2: Stepstone scan                 │
-└─────────────────────────────────────────┘
-                    ↓
++-----------------------------------------+
+|  Task 1: Indeed scan                    |
+|  Task 2: Stepstone scan                 |
++-----------------------------------------+
+                    |
 PHASE 2: Merge & Extract Companies
-┌─────────────────────────────────────────┐
-│  - Deduplicate jobs                     │
-│  - Extract unique company list          │
-│  - Split into batches of 5              │
-└─────────────────────────────────────────┘
-                    ↓
-PHASE 3: LinkedIn Search (Parallel Batches)
-┌─────────────────────────────────────────┐
-│  Task 3: LinkedIn batch 1 (companies 1-5)  │
-│  Task 4: LinkedIn batch 2 (companies 6-10) │
-│  Task 5: LinkedIn batch 3 (companies 11-15)│
-└─────────────────────────────────────────┘
-                    ↓
++-----------------------------------------+
+|  - Deduplicate jobs                     |
+|  - Extract unique company list          |
+|  - Sort by job count (most active first)|
++-----------------------------------------+
+                    |
+PHASE 3: LinkedIn Search (Sequential)
++-----------------------------------------+
+|  Company 1 → 2s wait → Company 2 → ...  |
+|  One at a time, up to 25 per session    |
++-----------------------------------------+
+                    |
 PHASE 4: Combine & Export
-┌─────────────────────────────────────────┐
-│  - Match leads to job postings          │
-│  - Rank by confidence                   │
-│  - Export if requested                  │
-└─────────────────────────────────────────┘
++-----------------------------------------+
+|  - Match leads to job postings          |
+|  - Rank by confidence                   |
+|  - Export if requested                  |
++-----------------------------------------+
 ```
 
 ---
@@ -180,27 +165,7 @@ PHASE 4: Combine & Export
 
 ### Step 1: Parse Input
 
-```javascript
-function parseLeadHuntCommand(input) {
-  // Extract job titles (split by comma if multiple)
-  const titlesMatch = input.match(/"([^"]+)"/);
-  const titles = titlesMatch[1].split(',').map(t => t.trim());
-
-  // Extract location
-  const locationMatch = input.match(/"[^"]+"\s+"([^"]+)"/);
-  const location = locationMatch[1];
-
-  // Extract flags
-  const options = {
-    linkedin: input.includes('--linkedin'),
-    full: input.includes('--full'),
-    export: input.match(/--export\s+(csv|json|xlsx)/)?.[1] || null,
-    batchSize: parseInt(input.match(/--batch-size\s+(\d+)/)?.[1]) || 5
-  };
-
-  return { titles, location, options };
-}
-```
+Parse job titles (split by comma if multiple), extract location, and parse flags (--linkedin, --full, --export, --batch-size).
 
 ### Step 2: Spawn Job Scraping Tasks
 
@@ -215,136 +180,88 @@ Wait for all tasks to complete
 Collect results from each task
 ```
 
+**Tab isolation:** Each scraper skill opens its own dedicated Chrome tab (via `window.open` in Stage 2). This is what enables true parallel execution — without it, concurrent scrapers would overwrite each other's page. Do not skip or modify the tab-opening step in child skills.
+
 ### Step 3: Merge & Deduplicate
 
-```javascript
-function mergeJobResults(indeedJobs, stepstoneJobs) {
-  const merged = [];
-  const seen = new Map(); // company+title -> job
+Use the deduplication functions from the **job-filtering** skill (`createJobKey`, `mergeJobListings`, `normalizeCompanyName`, `normalizeJobTitle`). The merge strategy:
 
-  // Process all jobs
-  const allJobs = [
-    ...indeedJobs.map(j => ({ ...j, source: 'indeed' })),
-    ...stepstoneJobs.map(j => ({ ...j, source: 'stepstone' }))
-  ];
-
-  for (const job of allJobs) {
-    const key = normalizeKey(job.company, job.title);
-
-    if (seen.has(key)) {
-      // Merge: keep best data from each
-      const existing = seen.get(key);
-      existing.sources.push(job.source);
-      existing.urls[job.source] = job.url;
-      // Prefer longer description
-      if (job.description?.length > existing.description?.length) {
-        existing.description = job.description;
-      }
-      // Add salary if missing
-      if (!existing.salary && job.salary) {
-        existing.salary = job.salary;
-      }
-    } else {
-      seen.set(key, {
-        ...job,
-        sources: [job.source],
-        urls: { [job.source]: job.url }
-      });
-    }
-  }
-
-  return Array.from(seen.values());
-}
-
-function normalizeKey(company, title) {
-  const normCompany = company.toLowerCase()
-    .replace(/gmbh|se|ag|inc|ltd|kg/gi, '')
-    .replace(/[^a-z0-9]/g, '');
-  const normTitle = title.toLowerCase()
-    .replace(/\(m\/w\/d\)|\(w\/m\/d\)|\(all genders\)/gi, '')
-    .replace(/[^a-z0-9]/g, '');
-  return `${normCompany}|${normTitle}`;
-}
-```
+1. Tag each job with its source (`indeed` or `stepstone`)
+2. Create a normalized key per job using `createJobKey(company, title)`
+3. If key exists: merge using `mergeJobListings()` — keeps best data from each source (longer description, salary if missing, work type if missing)
+4. If key is new: add to results with `sources: [source]` and `urls: { [source]: url }`
+5. Return deduplicated array
 
 ### Step 4: Extract Unique Companies
 
-```javascript
-function extractCompanies(jobs) {
-  const companies = new Map();
-
-  for (const job of jobs) {
-    const normName = normalizeCompanyName(job.company);
-    if (!companies.has(normName)) {
-      companies.set(normName, {
-        name: job.company,
-        normalized: normName,
-        jobCount: 1,
-        roles: [job.title]
-      });
-    } else {
-      const existing = companies.get(normName);
-      existing.jobCount++;
-      if (!existing.roles.includes(job.title)) {
-        existing.roles.push(job.title);
-      }
-    }
-  }
-
-  // Sort by job count (most active hiring first)
-  return Array.from(companies.values())
-    .sort((a, b) => b.jobCount - a.jobCount);
-}
-```
+Group deduplicated jobs by normalized company name. Sort by job count (most active hiring first) for LinkedIn prioritization.
 
 ### Step 5: Batch LinkedIn Searches
 
-Use the **linkedin-leads** skill in batches:
+Use the **linkedin-leads** skill sequentially (single-tab browser sessions process one company at a time):
 
-```javascript
-function batchCompanies(companies, batchSize = 5) {
-  const batches = [];
-  for (let i = 0; i < companies.length; i += batchSize) {
-    batches.push(companies.slice(i, i + batchSize));
-  }
-  return batches;
-}
-
-// Use linkedin-leads skill per batch
-// Wait 30 seconds between batch spawns
-for (const batch of batches) {
-  const companyNames = batch.map(c => c.name).join(', ');
-  // Use linkedin-leads skill: jobTitle, companyNames
-}
 ```
+2-second minimum wait between company searches
+One company at a time — do not attempt parallel tabs
+Max 25 companies per session
+Save on any detection signal
+```
+
+**Process ALL unique companies** up to the session max (25). Do not stop early — iterate through every company until all are covered or the max is reached. If a detection signal stops the search, save partial results and report which companies were not searched.
 
 ### Step 6: Combine Results
 
-```javascript
-function combineResults(jobs, linkedinLeads) {
-  // Match leads to jobs by company
-  const results = jobs.map(job => {
-    const companyLeads = linkedinLeads.filter(lead =>
-      normalizeCompanyName(lead.company) === normalizeCompanyName(job.company)
-    );
+Match leads to jobs by company, then sort by lead count (most leads first).
 
-    return {
-      ...job,
-      leads: companyLeads,
-      leadCount: companyLeads.length,
-      hasHiringManager: companyLeads.some(l => !l.is_hr),
-      hasHRContact: companyLeads.some(l => l.is_hr)
-    };
-  });
+### Step 7: Generate XLSX Export
 
-  // Sort: jobs with hiring managers first
-  return results.sort((a, b) => {
-    if (a.hasHiringManager && !b.hasHiringManager) return -1;
-    if (!a.hasHiringManager && b.hasHiringManager) return 1;
-    return b.leadCount - a.leadCount;
-  });
-}
-```
+Produce a multi-tab XLSX workbook. Each data source gets its own worksheet tab.
+
+**Tab 1: "Indeed Jobs"** — Jobs scraped from Indeed
+
+| Column | Source |
+|--------|--------|
+| Source | Always "Indeed" |
+| Company | `job.company` |
+| Role | `job.title` |
+| Location | `job.location` |
+| Salary | `job.salary` |
+| Remote | `job.workType` or empty |
+| Posted | `job.posted` |
+| Job URL | Constructed from `job.jk` |
+
+**Tab 2: "Stepstone Jobs"** — Jobs scraped from Stepstone
+
+| Column | Source |
+|--------|--------|
+| Source | Always "Stepstone" |
+| Company | `job.company` |
+| Role | `job.title` |
+| Location | `job.location` |
+| Salary | `job.salary` |
+| Remote | `job.workType` |
+| Posted | `job.posted` |
+| Job URL | Constructed from `job.href` |
+
+**Tab 3: "Hiring Managers"** (only if `--linkedin`) — Non-HR leads (IT decision-makers, department heads)
+
+| Column | Source |
+|--------|--------|
+| Company | `job.company` |
+| Job Posted | `job.title` (actual scraped title from board) |
+| Lead Name | `lead.name` |
+| Lead Title | `lead.title` (the lead's LinkedIn title) |
+| Location | `job.location` |
+| Confidence | `lead.confidence` |
+| LinkedIn Profile URL | `lead.linkedin_url` |
+
+**Tab 4: "HR & Recruiting"** (only if `--linkedin`) — HR/recruiting leads (`is_hr === true`)
+
+Same columns as Tab 3.
+
+Filename format: `lead-hunt-{job_title}-{YYYY-MM-DD}.xlsx`
+
+For export format examples (XLSX tabs, CSV, JSON) and `generateXLSXData()` implementation, see [references/export-formats.md](references/export-formats.md).
 
 ---
 
@@ -353,116 +270,39 @@ function combineResults(jobs, linkedinLeads) {
 ### Summary View
 
 ```
-╔══════════════════════════════════════════════════════════════╗
-║              LEAD HUNT RESULTS: SAP FI/CO                    ║
-╠══════════════════════════════════════════════════════════════╣
-║  Jobs Found:        47 (Indeed: 28, Stepstone: 31)           ║
-║  Unique Companies:  35                                        ║
-║  Duplicates:        12 (found on both boards)                ║
-║  LinkedIn Leads:    89                                        ║
-║  Hiring Managers:   52                                        ║
-║  HR Contacts:       37                                        ║
-╚══════════════════════════════════════════════════════════════╝
++------------------------------------------------------------+
+|              LEAD HUNT RESULTS: SAP FI/CO                  |
++------------------------------------------------------------+
+|  Jobs Found:        47 (Indeed: 28, Stepstone: 31)         |
+|  Unique Companies:  35                                     |
+|  Duplicates:        12 (found on both boards)              |
+|  LinkedIn Leads:    89                                     |
+|  Hiring Managers:   52                                     |
+|  HR Contacts:       37                                     |
++------------------------------------------------------------+
 ```
 
-### Detailed Output
-
-```json
-{
-  "summary": {
-    "jobTitle": "SAP FI/CO",
-    "location": "Germany",
-    "totalJobs": 47,
-    "uniqueCompanies": 35,
-    "sources": {
-      "indeed": 28,
-      "stepstone": 31,
-      "both": 12
-    },
-    "linkedinLeads": {
-      "total": 89,
-      "hiringManagers": 52,
-      "hrContacts": 37
-    }
-  },
-  "results": [
-    {
-      "company": "N-ERGIE Aktiengesellschaft",
-      "jobTitle": "SAP Inhouse Berater FI/CO (m/w/d)",
-      "location": "Nürnberg",
-      "salary": "72,000 - 90,000 €/year",
-      "posted": "5 hours ago",
-      "description": "Sie übernehmen die fachliche und technische Lead-Rolle...",
-      "sources": ["indeed", "stepstone"],
-      "urls": {
-        "indeed": "https://de.indeed.com/viewjob?jk=abc123",
-        "stepstone": "https://www.stepstone.de/jobs--..."
-      },
-      "leads": [
-        {
-          "name": "Max Mustermann",
-          "title": "Head of Controlling",
-          "linkedin_url": "https://linkedin.com/in/max-mustermann",
-          "is_hr": false,
-          "confidence": "high"
-        },
-        {
-          "name": "Anna Schmidt",
-          "title": "Talent Acquisition Manager",
-          "linkedin_url": "https://linkedin.com/in/anna-schmidt",
-          "is_hr": true,
-          "confidence": "medium"
-        }
-      ]
-    }
-  ]
-}
-```
-
----
-
-## Export Formats
-
-### CSV Export
-
-```csv
-Company,Job Title,Location,Salary,Source,Job URL,Lead Name,Lead Title,LinkedIn URL,Is HR,Confidence
-N-ERGIE Aktiengesellschaft,SAP Inhouse Berater FI/CO,Nürnberg,72000-90000,indeed+stepstone,https://...,Max Mustermann,Head of Controlling,https://linkedin.com/in/max-mustermann,false,high
-```
-
-### JSON Export
-
-Full structured data as shown above.
-
-### XLSX Export
-
-Multi-sheet workbook:
-- Sheet 1: Jobs (all job listings)
-- Sheet 2: Leads (all LinkedIn profiles)
-- Sheet 3: Summary (stats and metrics)
+After the summary, show top opportunities sorted by lead count, then export filename.
 
 ---
 
 ## Rate Limit Management
 
-### LinkedIn Batching Strategy
+### LinkedIn Search Pacing
+
+In single-tab browser sessions, process companies sequentially:
 
 ```
-Default batch size: 5 companies
-Wait between batches: 30 seconds
-Max batches per session: 6 (30 companies)
-
-If rate limit detected:
-  - Save all collected data
-  - Report partial results
-  - Provide resume instructions
+2-second minimum wait between company searches
+One company at a time — do not attempt parallel tabs
+Max 25 companies per session
+If detection signal appears: save all data and stop
 ```
 
-### Parallel Limits
+### Job Scraping Limits
 
 ```
 Max concurrent job scraper tasks: 6
-Max concurrent LinkedIn tasks: 3
 Stagger start: 2 seconds between task spawns
 ```
 
@@ -471,11 +311,23 @@ Stagger start: 2 seconds between task spawns
 ## Rules
 
 1. **Phase 1 is always parallel** - Job scraping runs on both boards simultaneously
-2. **Phase 3 respects rate limits** - LinkedIn batches with 30s delays
+2. **Phase 3 is sequential** - LinkedIn searches one company at a time with 2s pacing
 3. **Partial results are reported** - Never discard data if interrupted
 4. **Deduplication is smart** - Jobs on both boards merge, keeping best data
 5. **Companies are prioritized** - Most active hiring companies searched first on LinkedIn
 6. **Never bypass limits** - Rate limits exist to protect user accounts
+
+---
+
+## Known Fragile Points
+
+These issues have been observed in production runs and may recur:
+
+| Area | Issue | Mitigation |
+|------|-------|------------|
+| **Stepstone DOM** | Stepstone periodically changes its HTML structure, breaking job card extraction selectors. The stop boundary function and card resolution logic are most affected. | If extraction returns 0 jobs on a page with visible results, the DOM has changed — fall back to `browser_snapshot` text parsing. |
+| **LinkedIn selectors** | LinkedIn rotates CSS class names on frontend deploys. The linkedin-leads skill uses durable `a[href*="/in/"]` selectors as primary, but the card container selectors may still break. | If profile extraction returns empty, switch to `get_page_text()` + regex parsing of the accessibility tree. |
+| **Broad company names** | Companies with generic names ("Motive", "Progressive", "Group Solutions") return irrelevant LinkedIn results via the company filter dropdown. | When the dropdown returns multiple matches for a generic name, pick the one with the correct location/industry. For names with 2 or fewer words, add a location or department keyword in the search field. See job-filtering skill disambiguation rules. |
 
 ---
 
@@ -487,11 +339,11 @@ Stagger start: 2 seconds between task spawns
 | Stepstone blocked | Continue with Indeed only |
 | LinkedIn rate limit | Save partial, stop LinkedIn phase |
 | No jobs found | Report empty, skip LinkedIn phase |
-| Partial LinkedIn | Save what we have, note incomplete |
+| Partial LinkedIn | Save collected data, note incomplete |
 
 ### Resume Capability
 
-If interrupted, user can resume:
+If interrupted, the user can resume:
 
 ```
 "Resume lead hunt from company #15"
@@ -517,37 +369,8 @@ After initial results:
 "Find more leads at Siemens and BMW"
 "Run LinkedIn search for the remaining companies"
 
-# Export
-"Export results to csv"
-"Export just the N-ERGIE results"
-```
-
----
-
-## Daily Recruiter Workflow
-
-```
-08:00 - Morning Scan
-────────────────────
-Lead hunt for "SAP FI/CO, SAP HCM" "Germany"
-→ Quick scan of new jobs (last 24h)
-
-09:00 - LinkedIn Enrichment
-────────────────────────────
-Lead hunt for "SAP FI/CO" "Germany" --linkedin --batch-size 10
-→ Add hiring manager contacts
-
-10:00 - Review & Prioritize
-────────────────────────────
-"Show jobs with high-confidence leads"
-"Get full JD for jobs 1, 3, 7"
-→ Identify best opportunities
-
-11:00 - Export & Outreach
-──────────────────────────
-"Export results to csv"
-→ Import to CRM
-→ Begin LinkedIn outreach (manual)
+# Re-export
+"Re-export with only high-confidence leads"
 ```
 
 ---
@@ -565,60 +388,7 @@ This orchestrator coordinates:
 
 ---
 
-## Example Session
+## References
 
-```
-You: Hunt leads for SAP FI/CO in Germany with LinkedIn
-
-Claude: Starting lead hunt for SAP FI/CO in Germany with LinkedIn enrichment.
-
-## Phase 1: Job Scraping (Parallel)
-
-[Using indeed-scraper and stepstone-scraper skills...]
-✓ Indeed: 28 jobs found
-✓ Stepstone: 31 jobs found
-
-## Phase 2: Merge & Deduplicate
-
-- Total raw jobs: 59
-- Duplicates found: 12 (same company + similar title)
-- Unique jobs: 47
-- Unique companies: 35
-
-## Phase 3: LinkedIn Search
-
-Batching 35 companies into 7 batches of 5...
-
-[Batch 1/7] N-ERGIE, Magni, Gasunie, Bosch, Siemens
-✓ Found 14 leads (10 hiring managers, 4 HR)
-
-[Batch 2/7] BMW, Allianz, SAP, Deutsche Bank, Henkel
-✓ Found 12 leads (8 hiring managers, 4 HR)
-
-[Batch 3/7] ...
-...
-
-## Phase 4: Results
-
-╔══════════════════════════════════════════════════════════════╗
-║              LEAD HUNT RESULTS: SAP FI/CO                    ║
-╠══════════════════════════════════════════════════════════════╣
-║  Jobs Found:        47 (Indeed: 28, Stepstone: 31)           ║
-║  Unique Companies:  35                                        ║
-║  Duplicates:        12 (found on both boards)                ║
-║  LinkedIn Leads:    89                                        ║
-║  Hiring Managers:   52                                        ║
-║  HR Contacts:       37                                        ║
-╚══════════════════════════════════════════════════════════════╝
-
-### Top Opportunities (with hiring manager leads)
-
-| # | Company | Role | Location | Salary | Leads |
-|---|---------|------|----------|--------|-------|
-| 1 | N-ERGIE | SAP FI/CO Berater | Nürnberg | 72-90k | 3 (2 HM) |
-| 2 | Bosch | SAP CO Controller | Stuttgart | 68-85k | 2 (1 HM) |
-| 3 | Siemens | SAP FI Lead | Erlangen | 80-100k | 4 (3 HM) |
-...
-
-Say "export csv" to download, or "show leads for #1" for details.
-```
+- **Export format details & code**: See [references/export-formats.md](references/export-formats.md) for XLSX/CSV/JSON examples and `generateXLSXData()` implementation
+- **Example session transcript**: See [references/example-session.md](references/example-session.md) for a full pipeline walkthrough
